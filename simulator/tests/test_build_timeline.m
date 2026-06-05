@@ -150,6 +150,108 @@ verifyLessThan(tc, ue1_med, ue2_med - 3, ...
 end
 
 
+% -------------------------------------------------------------------------
+% Iter C: UE state carry-over flag in global config
+% -------------------------------------------------------------------------
+
+function test_carry_over_ues_flag_threads_state_across_phases(tc)
+% Build a 2-phase timeline with carry_over_ues=true. Verify that the
+% first sample of phase 2 for each UE equals the last sample of phase 1
+% (when carry-over fires; UEs whose phase-1 endpoint left the area box
+% are random-re-init'd and skipped from this assertion).
+%
+% NOTE: scenarios.baseline overrides only support fields that exist in
+% the spec; `speed_mps` exists but `area_m` is set at the timeline-global
+% level (not per-phase). Keep area generous + speed/duration small so
+% every UE stays inside the box for deterministic position equality.
+tl = struct();
+tl.timeline_id = "test_carryover";
+tl.global = struct('master_seed', 13, 'n_ue', 3, 'area_m', 800, ...
+                   'default_duration_s', 5, 'carry_over_ues', true);
+phase1 = struct('phase_id', 1, 'scenario', "baseline", ...
+                'params', struct('speed_mps', 2));
+phase2 = struct('phase_id', 2, 'scenario', "baseline", ...
+                'params', struct('speed_mps', 2));
+tl.phases = [phase1; phase2];
+tl.ground_truth_drift   = [];
+tl.ground_truth_anomaly = [];
+
+tl_path = fullfile(tc.TestData.tmp, 'tl_carry.json');
+fid = fopen(tl_path, 'w');
+fprintf(fid, '%s\n', jsonencode(tl, 'PrettyPrint', true));
+fclose(fid);
+
+out_dir = fullfile(tc.TestData.tmp, 'out_carry');
+build_timeline(string(tl_path), string(out_dir));
+
+samples = parquetread(fullfile(out_dir, 'samples.parquet'));
+
+n_carried = 0;
+for ue = 1:3
+    s_p1 = samples(samples.phase_id == 1 & samples.ue_id == ue, :);
+    s_p2 = samples(samples.phase_id == 2 & samples.ue_id == ue, :);
+    s_p1 = sortrows(s_p1, 'time_s');
+    s_p2 = sortrows(s_p2, 'time_s');
+    if abs(s_p1.ue_x_m(end)) <= 800 && abs(s_p1.ue_y_m(end)) <= 800
+        verifyEqual(tc, s_p2.ue_x_m(1), s_p1.ue_x_m(end), 'AbsTol', 1e-6, ...
+            sprintf('UE %d phase-2 start x should equal phase-1 end x', ue));
+        verifyEqual(tc, s_p2.ue_y_m(1), s_p1.ue_y_m(end), 'AbsTol', 1e-6, ...
+            sprintf('UE %d phase-2 start y should equal phase-1 end y', ue));
+        n_carried = n_carried + 1;
+    end
+end
+% At least one UE must have carried over (else the test is vacuous).
+verifyGreaterThan(tc, n_carried, 0);
+
+% Metadata records the flag
+meta = jsondecode(fileread(fullfile(out_dir, 'run_metadata.json')));
+verifyTrue(tc, meta.carry_over_ues);
+end
+
+
+function test_carry_over_ues_default_is_false(tc)
+% Without the flag, behaviour is unchanged (each phase resets UE positions
+% randomly per seed). Metadata reflects the default.
+tl = struct();
+tl.timeline_id = "test_noncarry";
+tl.global = struct('master_seed', 19, 'n_ue', 2, 'area_m', 500, ...
+                   'default_duration_s', 6);
+phase1 = struct('phase_id', 1, 'scenario', "baseline", 'params', struct());
+phase2 = struct('phase_id', 2, 'scenario', "baseline", 'params', struct());
+tl.phases = [phase1; phase2];
+
+tl_path = fullfile(tc.TestData.tmp, 'tl_nocarry.json');
+fid = fopen(tl_path, 'w');
+fprintf(fid, '%s\n', jsonencode(tl, 'PrettyPrint', true));
+fclose(fid);
+
+out_dir = fullfile(tc.TestData.tmp, 'out_nocarry');
+build_timeline(string(tl_path), string(out_dir));
+
+meta = jsondecode(fileread(fullfile(out_dir, 'run_metadata.json')));
+verifyFalse(tc, logical(meta.carry_over_ues));
+
+% At least one UE should have a discontinuity at the phase boundary,
+% confirming positions did NOT carry over.
+samples = parquetread(fullfile(out_dir, 'samples.parquet'));
+discontinuous = false;
+for ue = 1:2
+    s_p1 = samples(samples.phase_id == 1 & samples.ue_id == ue, :);
+    s_p2 = samples(samples.phase_id == 2 & samples.ue_id == ue, :);
+    s_p1 = sortrows(s_p1, 'time_s');
+    s_p2 = sortrows(s_p2, 'time_s');
+    gap = norm([s_p2.ue_x_m(1) - s_p1.ue_x_m(end), ...
+                s_p2.ue_y_m(1) - s_p1.ue_y_m(end)]);
+    if gap > 1   % anything > 1 m is a non-trivial jump
+        discontinuous = true;
+        break
+    end
+end
+verifyTrue(tc, discontinuous, ...
+    'Without carry_over_ues, phase boundaries should show UE position jumps');
+end
+
+
 function test_anomaly_with_unknown_phase_errors(tc)
 tl = struct();
 tl.timeline_id = "test_bad";

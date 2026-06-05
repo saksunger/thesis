@@ -44,10 +44,11 @@ fprintf('Timeline %s (%d phases) -> %s\n', ...
         tl.timeline_id, numel(tl.phases), out_dir);
 
 % --- 2. Resolve per-phase specs + run each ---
-default_dur = get_default(tl.global, 'default_duration_s', 60);
-master_seed = get_default(tl.global, 'master_seed', 42);
-n_ue_glob   = get_default(tl.global, 'n_ue', 12);
-area_glob   = get_default(tl.global, 'area_m', 1500);
+default_dur     = get_default(tl.global, 'default_duration_s', 60);
+master_seed     = get_default(tl.global, 'master_seed', 42);
+n_ue_glob       = get_default(tl.global, 'n_ue', 12);
+area_glob       = get_default(tl.global, 'area_m', 1500);
+carry_over_ues  = logical(get_default(tl.global, 'carry_over_ues', false));
 
 samples_chunks = cell(numel(tl.phases), 1);
 events_chunks  = cell(numel(tl.phases), 1);
@@ -61,6 +62,10 @@ events_chunks  = cell(numel(tl.phases), 1);
 anomalies_by_phase = build_anomaly_index(tl, phase_t_start);
 
 time_offset = 0;
+% UE state carried across phases when `global.carry_over_ues=true` (Iter C).
+% When false, each phase resets UE positions (original Iter B behaviour).
+% Cell-array of structs indexed by ue_id; empty cell = no prior state.
+ue_state = {};
 t0 = tic;
 
 for i = 1:numel(tl.phases)
@@ -99,7 +104,11 @@ for i = 1:numel(tl.phases)
     fprintf('  [phase %d] scenario=%-22s duration=%4.0fs ...\n', ...
             phase_spec.phase_id, phase_spec.scenario_name, phase_spec.duration_s);
 
-    [s_tbl, e_tbl] = utils.run_phase(phase_spec);
+    if carry_over_ues
+        [s_tbl, e_tbl, ue_state] = utils.run_phase(phase_spec, ue_state);
+    else
+        [s_tbl, e_tbl] = utils.run_phase(phase_spec);
+    end
 
     % Apply phase-wide time offset (event_id uniqueness fixed below after
     % concat — each phase's per-UE event_loop restarts from 1, so per-phase
@@ -154,6 +163,7 @@ meta_out.matlab_version  = version();
 meta_out.master_seed     = master_seed;
 meta_out.n_ue            = n_ue_glob;
 meta_out.area_m          = area_glob;
+meta_out.carry_over_ues  = carry_over_ues;
 meta_out.total_duration_s = time_offset;
 meta_out.n_phases        = numel(tl.phases);
 meta_out.n_samples       = height(samples_all);

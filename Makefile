@@ -42,7 +42,10 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly drift adaptive surrogate end2end clean
+
+# Phase 4 Iter C sweep_static output dir
+SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
 
 help:
 	@echo "Phase 0–3 (implemented):"
@@ -58,7 +61,10 @@ help:
 	@echo ""
 	@echo "Phase 4 (timeline data generation — Iter B: 4 drifts + 4 anomaly types):"
 	@echo "  sim             Build timeline (TIMELINE=$(TIMELINE) -> $(TIMELINE_DIR)/$$TIMELINE.json)"
-	@echo "                  Available timelines: timeline_short (3-phase smoke), timeline_iter_b (6-phase full coverage)"
+	@echo "                  Available timelines: timeline_short (3-phase smoke), timeline_iter_b (6-phase full coverage),"
+	@echo "                  timeline_medium (30-phase production timeline)"
+	@echo "  sweep-static    Iter C static (TTT × hyst × A3 × seeds) sweep → sweep_config_perf.parquet for Phase 8 surrogate"
+	@echo "  gen-timeline-medium  Iter C: (re)generate timeline_medium.json via tools/gen_timeline.py"
 	@echo ""
 	@echo "Phase 5 (anomaly benchmark — Iter A smoke implemented):"
 	@echo "  pytest          Run Python unit tests (analysis/anomaly/tests/, requires .venv)"
@@ -87,7 +93,7 @@ test:
 		exit(double(any([r.Failed])))"
 
 pytest:
-	$(PYTHON) -m pytest analysis/anomaly/tests/ -v
+	$(PYTHON) -m pytest analysis/anomaly/tests/ tools/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
@@ -148,6 +154,7 @@ calibrate: calibrate-sim
 
 # ---------------------------------------------------------------------------
 # Phase 4 — Timeline data generation (Iter B: 4 drifts + 4 anomaly injectors)
+# Phase 4 Iter C — Production timelines + static sweep for Phase 8 surrogate
 # ---------------------------------------------------------------------------
 sim:
 	@mkdir -p $(DATA_SIM)/$(TIMELINE)
@@ -155,6 +162,33 @@ sim:
 		build_timeline('$(TIMELINE_DIR)/$(TIMELINE).json','$(DATA_SIM)/$(TIMELINE)')"
 	@echo "Timeline parquet + ground truth in $(DATA_SIM)/$(TIMELINE):"
 	@ls -lh $(DATA_SIM)/$(TIMELINE)
+
+# Iter C: static (TTT × hyst × A3 × seeds) sweep producing the
+# config-performance training matrix consumed by the Phase 8 surrogate.
+# Default grid is 3 × 4 × 3 × 10 = 360 runs ≈ 5–10 min wall clock with parfor.
+sweep-static:
+	@mkdir -p $(SWEEP_STATIC_DIR)
+	$(MATLAB) $(MATLAB_FLAGS) "addpath(genpath('simulator')); \
+		sweep_static('$(SWEEP_STATIC_DIR)')"
+	@echo "Static sweep parquet + metadata in $(SWEEP_STATIC_DIR):"
+	@ls -lh $(SWEEP_STATIC_DIR)
+
+# Iter C: parametric timeline generator (used to (re)build production timelines).
+# Defaults to regenerating timeline_medium.json; override TIMELINE_GEN_TARGET to
+# build a different file, or call `python -m tools.gen_timeline` directly for
+# custom configs.
+TIMELINE_GEN_TARGET ?= simulator/+scenarios/timelines/timeline_medium.json
+gen-timeline-medium:
+	$(PYTHON) -m tools.gen_timeline \
+		--out $(TIMELINE_GEN_TARGET) \
+		--timeline-id timeline_medium \
+		--description "Phase 4 Iter C production timeline: 30 phases x 60s. 2 instances per drift, 10 anomalies per type. UE positions carry over." \
+		--n-phases 30 --phase-duration-s 60 \
+		--master-seed 42 --n-ue 12 --area-m 1500 \
+		--carry-over-ues true \
+		--drifts-per-type 2 --anomalies-per-type 10 \
+		--head-baseline-phases 3 --tail-baseline-phases 3 \
+		--rng-seed 42
 
 # ---------------------------------------------------------------------------
 # Phase 5 — Anomaly detection (Iter A smoke landed)
@@ -181,7 +215,7 @@ surrogate:
 end2end:
 	$(PYTHON) -m analysis.demo.run --data $(DATA_SIM)/$(TIMELINE)
 
-all: sim calibrate anomaly drift adaptive surrogate end2end
+all: sim sweep-static calibrate anomaly drift adaptive surrogate end2end
 
 clean:
 	rm -rf $(DATA_SIM)/* $(DATA_PROC)/*

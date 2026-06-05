@@ -1,4 +1,4 @@
-function [samples_tbl, events_tbl] = run_phase(phase_spec)
+function [samples_tbl, events_tbl, ue_state_out] = run_phase(phase_spec, ue_state_in)
 %RUN_PHASE  Run one timeline phase, return sample-level + event-level tables.
 %
 % This is the single-phase execution kernel that the timeline builder
@@ -20,16 +20,34 @@ function [samples_tbl, events_tbl] = run_phase(phase_spec)
 %     .meas_params    (struct)         passed to ho.measurements (channel scenario, fc, ...)
 %     .layout_params  (struct)         (.n_tiers, .isd_m, .h_bs_m) for utils.hex_layout
 %     .speed_mps      (double)         constant UE speed for straight-line tracks
+%   ue_state_in : (optional, Phase 4 Iter C) cell array indexed by ue_id.
+%                 Each element is either empty (UE has no prior state ->
+%                 fresh random init) or a struct with field `x_end_m`,
+%                 `y_end_m`. When supplied, the UE starts at its previous
+%                 phase's end position; we DELIBERATELY re-randomise the
+%                 direction per phase (Random-Direction mobility model)
+%                 because preserving direction caused UEs to walk straight
+%                 off the cell footprint after a handful of phases (per-UE
+%                 RSRP degraded by > 60 dB across a 30-phase production
+%                 timeline). UEs with carry-over endpoints OUTSIDE
+%                 [-area_m, area_m] fall back to random init (bounded
+%                 mobility). UEs whose ue_id exceeds numel(ue_state_in)
+%                 (new UEs added by D-1 traffic shift) also get random init.
 %
 % Returns:
-%   samples_tbl : table matching canonical sample-level schema (one row per
-%                 (ue, tick)) with phase_id and scenario_name columns added.
-%   events_tbl  : table matching canonical event-level schema (one row per
-%                 HO/RLF/PING_PONG event) with phase_id and scenario_name
-%                 columns added.
+%   samples_tbl  : table matching canonical sample-level schema (one row per
+%                  (ue, tick)) with phase_id and scenario_name columns added.
+%   events_tbl   : table matching canonical event-level schema (one row per
+%                  HO/RLF/PING_PONG event) with phase_id and scenario_name
+%                  columns added.
+%   ue_state_out : cell array of length phase_spec.n_ue. Each cell holds the
+%                  end-of-phase state for that UE (x_end_m, y_end_m, theta_rad,
+%                  speed_mps_last). Caller can thread this into the next
+%                  phase's `ue_state_in` to keep UE trajectories continuous.
 
 arguments
-    phase_spec (1,1) struct
+    phase_spec   (1,1) struct
+    ue_state_in        cell = {}
 end
 
 c = utils.constants();
@@ -41,21 +59,41 @@ cells = utils.hex_layout(phase_spec.layout_params.n_tiers, ...
 
 samples_chunks = cell(phase_spec.n_ue, 1);
 events_chunks  = cell(phase_spec.n_ue, 1);
+ue_state_out   = cell(phase_spec.n_ue, 1);
 
 for ue_id = 1:phase_spec.n_ue
     seed = phase_spec.master_seed + phase_spec.phase_id * 100 + ue_id;
     rng(seed);
 
-    % Speed-driven straight-line trajectory: random start in [-area, area],
-    % random direction, fixed speed → fixed displacement = speed * duration.
-    % Constant speed matches the phase_spec.speed_mps exactly (so D-3
-    % "mobility shift" scenario gives the requested speed without any
-    % emergent slop). UE may leave the area_m box during the phase, which
-    % is desirable for getting good distance variation.
-    p0    = (rand(1, 2) * 2 - 1) * phase_spec.area_m;
+    % Speed-driven straight-line trajectory. Direction is always freshly
+    % randomised per phase (Random-Direction mobility model): if we kept
+    % `theta` across phases the UE would walk in a single straight line for
+    % the entire timeline and exit the cell footprint within a handful of
+    % phases. Position is carried over from the prior phase's end-of-phase
+    % state IFF (a) the caller supplied `ue_state_in` and (b) the stored
+    % endpoint is still inside [-area_m, area_m]. Otherwise we fall back to
+    % a fresh random spawn inside the area box. This keeps motion bounded
+    % while still giving per-UE trajectories some inter-phase continuity for
+    % the drift-aware ML pipeline.
+    %
+    % Constant speed matches `phase_spec.speed_mps` exactly (displacement =
+    % speed × duration), so D-3 "mobility shift" gives the requested speed
+    % without any emergent slop.
     theta = rand() * 2 * pi;
+    if numel(ue_state_in) >= ue_id && ~isempty(ue_state_in{ue_id})
+        st = ue_state_in{ue_id};
+        if abs(st.x_end_m) <= phase_spec.area_m && abs(st.y_end_m) <= phase_spec.area_m
+            p0 = [st.x_end_m, st.y_end_m];
+        else
+            % Endpoint drifted outside the area box; re-init to keep
+            % per-UE mobility bounded.
+            p0 = (rand(1, 2) * 2 - 1) * phase_spec.area_m;
+        end
+    else
+        p0 = (rand(1, 2) * 2 - 1) * phase_spec.area_m;
+    end
     disp_m = phase_spec.speed_mps * phase_spec.duration_s;
-    p1    = p0 + disp_m * [cos(theta), sin(theta)];
+    p1     = p0 + disp_m * [cos(theta), sin(theta)];
     waypoints = [p0(1), p0(2), 0; p1(1), p1(2), phase_spec.duration_s];
     ue_track  = mobility.waypoint_track(waypoints, c.sim_dt_s);
     ue_track.v_mps = repmat(phase_spec.speed_mps, numel(ue_track.t_s), 1);
@@ -81,6 +119,16 @@ for ue_id = 1:phase_spec.n_ue
     samples_chunks{ue_id} = build_samples_chunk(ue_id, ue_track, cells, meas, ...
                                                 phase_spec);
     events_chunks{ue_id}  = build_events_chunk(events, phase_spec);
+
+    % End-of-phase state for the next phase (only used when the caller has
+    % opted into carry-over by threading `ue_state_in` -> `ue_state_out`).
+    % We record theta + speed for diagnostics only; the next phase will
+    % re-randomise theta either way (see Random-Direction comment above).
+    ue_state_out{ue_id} = struct( ...
+        'x_end_m',        p1(1), ...
+        'y_end_m',        p1(2), ...
+        'theta_rad',      theta, ...
+        'speed_mps_last', phase_spec.speed_mps);
 end
 
 samples_tbl = vertcat(samples_chunks{:});
