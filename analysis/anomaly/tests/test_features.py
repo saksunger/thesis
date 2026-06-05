@@ -12,6 +12,7 @@ from analysis.anomaly.features import (
     WindowConfig,
     aggregate_windows,
     feature_columns,
+    feature_groups,
 )
 
 
@@ -138,3 +139,41 @@ def test_hosr_nan_when_no_attempts():
     events = _mk_events(0)
     feats = aggregate_windows(samples, events, WindowConfig(window_s=5.0, slide_s=5.0))
     assert feats["hosr"].isna().all(), "HOSR must be NaN when no HO attempts"
+
+
+# -------------------------------------------------------------------------
+# Phase 5 Iter B: feature_groups() helper
+# -------------------------------------------------------------------------
+
+def test_feature_groups_partition_matches_feature_columns():
+    groups = feature_groups()
+    all_grouped = [c for cols in groups.values() for c in cols]
+    expected = feature_columns()
+    # No duplicates across groups (disjoint)
+    assert len(all_grouped) == len(set(all_grouped))
+    # Exhaustive: union == feature_columns()
+    assert set(all_grouped) == set(expected)
+    assert len(all_grouped) == len(expected)
+
+
+def test_feature_groups_have_expected_families():
+    groups = feature_groups()
+    assert set(groups) == {"rsrp", "rsrq", "sinr", "speed", "cell", "events", "derived"}
+    # Sanity checks on per-family membership
+    assert all(c.startswith("rsrp") for c in groups["rsrp"])
+    assert all(c.startswith("rsrq") for c in groups["rsrq"])
+    assert all(c.startswith("sinr_") for c in groups["sinr"])
+    assert all(c.startswith("ue_speed_") for c in groups["speed"])
+    assert groups["cell"] == ["serving_cell_mode"]
+    assert all(c.startswith("n_") for c in groups["events"])
+    assert set(groups["derived"]) == {"hosr", "hofr_rate", "rlf_rate", "ping_pong_rate"}
+
+
+def test_feature_groups_drop_one_yields_disjoint_remainder():
+    groups = feature_groups()
+    full = feature_columns()
+    for fam, cols in groups.items():
+        kept = [c for c in full if c not in set(cols)]
+        # Dropping one family must remove exactly that family
+        assert len(kept) == len(full) - len(cols), f"family {fam} drop count mismatch"
+        assert not (set(kept) & set(cols))

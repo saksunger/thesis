@@ -97,6 +97,59 @@ def feature_columns() -> list[str]:
     return cols
 
 
+def feature_groups() -> dict[str, list[str]]:
+    """Group feature columns by signal family for per-family ablation.
+
+    Used by Phase 5 Iter B ablation studies ("drop one family at a
+    time → which family carries the signal for each anomaly type?").
+    The groups are disjoint and exhaustive: union over all groups ==
+    :func:`feature_columns`.
+
+    Groups:
+        rsrp     : serving + neighbour RSRP percentiles / std
+        rsrq     : serving + neighbour RSRQ percentiles / std
+        sinr     : serving SINR percentiles / std
+        speed    : UE-speed percentiles / std
+        cell     : serving_cell_mode (categorical-ish, single column)
+        events   : raw event counts per window (n_ho_attempt, n_rlf, ...)
+        derived  : derived rates (HOSR, HOFR_rate, RLF_rate, ping_pong_rate)
+    """
+    groups: dict[str, list[str]] = {
+        "rsrp":    [],
+        "rsrq":    [],
+        "sinr":    [],
+        "speed":   [],
+        "cell":    ["serving_cell_mode"],
+        "events":  [f"n_{ev.lower()}" for ev in EVENT_TYPES],
+        "derived": ["hosr", "hofr_rate", "rlf_rate", "ping_pong_rate"],
+    }
+    for c in SAMPLE_NUMERIC_COLS:
+        if c.startswith("rsrp"):
+            family = "rsrp"
+        elif c.startswith("rsrq"):
+            family = "rsrq"
+        elif c.startswith("sinr"):
+            family = "sinr"
+        elif c.startswith("ue_speed"):
+            family = "speed"
+        else:
+            raise AssertionError(f"unknown SAMPLE_NUMERIC_COL family: {c}")
+        for suffix, _ in _QUANTILE_SUFFIXES:
+            groups[family].append(f"{c}__{suffix}")
+        groups[family].append(f"{c}__std")
+
+    # Internal consistency: union must equal feature_columns().
+    all_grouped = [c for cols in groups.values() for c in cols]
+    expected = feature_columns()
+    if set(all_grouped) != set(expected) or len(all_grouped) != len(expected):
+        raise AssertionError(
+            f"feature_groups() inconsistency: "
+            f"missing={set(expected) - set(all_grouped)}, "
+            f"extra={set(all_grouped) - set(expected)}"
+        )
+    return groups
+
+
 def aggregate_windows(
     samples: pd.DataFrame,
     events: pd.DataFrame,

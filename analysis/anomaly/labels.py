@@ -5,28 +5,34 @@ per *injection*, with timeline-global start/end times and affected UE /
 cell scopes) into per-window binary labels for the feature table
 emitted by :func:`analysis.anomaly.features.aggregate_windows`.
 
-Labelling rule (Iter A — pragmatic)
------------------------------------
-A window `(ue_id, t_start_s, t_end_s)` is labelled positive (`anomaly=1`)
-iff any ground-truth anomaly entry overlaps the window's time range AND
-the UE is in scope:
+Labelling rule (Iter B — cell-aware)
+------------------------------------
+A window `(ue_id, t_start_s, t_end_s, serving_cell_mode)` is labelled
+positive (`anomaly=1`) iff any ground-truth anomaly entry overlaps the
+window's time range AND **both** the UE-scope and cell-scope match:
 
-- `affected_ue_ids == "all"`     → every UE matches (used by
-  `interference_spike` whose scoping is by cell, not UE).
+- `affected_ue_ids == "all"`     → every UE matches.
 - `affected_ue_ids == "<list>"`  → only listed UEs match.
+- `affected_cell_ids == "all"`   → every cell matches.
+- `affected_cell_ids == "<list>"`→ only windows whose
+  `serving_cell_mode ∈ affected_cell_ids` match.
 
-This rule produces some labelling slack for `interference_spike` because
-a UE whose serving cell is NOT the targeted one is *exposed but
-unaffected*. Iter B will refine this by joining `serving_cell_id` of
-each window against `affected_cell_ids`; Iter A keeps the simpler rule
-to de-risk the detector pipeline first.
+Why both? `interference_spike` (A-3) targets cells, not UEs, so the
+JSON spec sets `affected_ue_ids="all"` and a specific
+`affected_cell_ids` list. Iter A only honoured the UE-scope which
+labelled *every* UE positive during an A-3 burst — even UEs whose
+serving cell was untargeted. That over-labelling depressed PR-AUC for
+A-3 (0.46 in Iter A smoke). The cell-conditional rule fixes this:
+only windows where the UE is actually camped on a targeted cell are
+labelled positive.
 
-Per-anomaly-type label columns are also emitted (`label_A_1`, `label_A_2`,
+Per-anomaly-type label columns are emitted (`label_A_1`, `label_A_2`,
 …) so downstream code can compute PR-AUC per anomaly type.
 """
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
@@ -53,10 +59,14 @@ def label_windows(
 
     Args:
         features            : output of `analysis.anomaly.features.aggregate_windows`
-                              (must contain `ue_id`, `t_start_s`, `t_end_s`).
+                              (must contain `ue_id`, `t_start_s`, `t_end_s`,
+                              `serving_cell_mode`). The `serving_cell_mode`
+                              column is required for cell-conditional A-3
+                              (interference_spike) labelling.
         ground_truth_anomaly: DataFrame from `ground_truth_anomaly.parquet`
                               with columns `anomaly_id`, `anomaly_type`,
-                              `t_start_s`, `t_end_s`, `affected_ue_ids`.
+                              `t_start_s`, `t_end_s`, `affected_ue_ids`,
+                              `affected_cell_ids`.
 
     Returns:
         Same DataFrame as `features` with these new columns:
@@ -73,36 +83,52 @@ def label_windows(
         used by `+anomalies.apply_all` in the simulator.
     """
     out = features.copy()
-    n = len(out)
     out["label_anomaly"] = 0
     out["active_anomaly_id"] = ""
 
     if ground_truth_anomaly is None or ground_truth_anomaly.empty:
         return out
 
+    if "serving_cell_mode" not in out.columns:
+        # Backstop: if upstream forgot to include serving_cell_mode, fall
+        # back to "all cells match" for the cell-scope test. This keeps
+        # label_windows robust to feature-table variants but means A-3
+        # PR-AUC will regress to the Iter A behaviour.
+        out["serving_cell_mode"] = -1
+
     anomaly_ids = sorted(ground_truth_anomaly["anomaly_id"].unique().tolist())
     for aid in anomaly_ids:
         out[f"label_{aid}"] = 0
 
-    win_ue = out["ue_id"].to_numpy()
-    win_t0 = out["t_start_s"].to_numpy()
-    win_t1 = out["t_end_s"].to_numpy()
+    win_ue   = out["ue_id"].to_numpy()
+    win_t0   = out["t_start_s"].to_numpy()
+    win_t1   = out["t_end_s"].to_numpy()
+    win_cell = out["serving_cell_mode"].to_numpy()
+
+    has_cell_col = "affected_cell_ids" in ground_truth_anomaly.columns
 
     for _, anom in ground_truth_anomaly.iterrows():
         a_t0 = float(anom["t_start_s"])
         a_t1 = float(anom["t_end_s"])
         a_ues = _parse_id_list(anom["affected_ue_ids"])
+        a_cells = _parse_id_list(anom["affected_cell_ids"]) if has_cell_col else None
         aid = str(anom["anomaly_id"])
 
         # Time overlap test (half-open intervals):
         #   overlap iff win_t0 < a_t1 AND a_t0 < win_t1
         time_match = (win_t0 < a_t1) & (a_t0 < win_t1)
-        if a_ues is None:
-            ue_match = pd.Series(True, index=out.index).to_numpy()
-        else:
-            ue_match = pd.Series(win_ue).isin(a_ues).to_numpy()
+        ue_match = (
+            np.ones_like(win_ue, dtype=bool)
+            if a_ues is None
+            else pd.Series(win_ue).isin(a_ues).to_numpy()
+        )
+        cell_match = (
+            np.ones_like(win_cell, dtype=bool)
+            if a_cells is None
+            else pd.Series(win_cell).isin(a_cells).to_numpy()
+        )
 
-        match = time_match & ue_match
+        match = time_match & ue_match & cell_match
         out.loc[match, "label_anomaly"] = 1
         out.loc[match, f"label_{aid}"] = 1
         # Append the active anomaly_id to the comma-joined list, with

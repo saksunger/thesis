@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark anomaly drift adaptive surrogate end2end clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -66,12 +66,14 @@ help:
 	@echo "  sweep-static    Iter C static (TTT × hyst × A3 × seeds) sweep → sweep_config_perf.parquet for Phase 8 surrogate"
 	@echo "  gen-timeline-medium  Iter C: (re)generate timeline_medium.json via tools/gen_timeline.py"
 	@echo ""
-	@echo "Phase 5 (anomaly benchmark — Iter A smoke implemented):"
+	@echo "Phase 5 (anomaly benchmark — Iter A smoke + Iter B full implemented):"
 	@echo "  pytest          Run Python unit tests (analysis/anomaly/tests/, requires .venv)"
 	@echo "  anomaly-smoke   Iter A smoke: IsoForest + LOF + PCA-AE on TIMELINE; PR-AUC + FPR per phase + per anomaly"
+	@echo "  anomaly-benchmark Iter B full: 5 detectors (IsoForest/LOF/OneClassSVM/PCA-AE/MLP-AE)"
+	@echo "                  x cell-conditional A-3 labels x bootstrap CI x window sweep (2/5/10/30 s) x ablation"
+	@echo "                  Default timeline: timeline_medium. Overrides: TIMELINE=<name>"
 	@echo ""
 	@echo "Phase 5+ (placeholders):"
-	@echo "  anomaly         Anomaly detection benchmark (full, Iter B)"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
 	@echo "  surrogate       Configuration-performance surrogate"
@@ -191,10 +193,17 @@ gen-timeline-medium:
 		--rng-seed 42
 
 # ---------------------------------------------------------------------------
-# Phase 5 — Anomaly detection (Iter A smoke landed)
+# Phase 5 — Anomaly detection (Iter A smoke + Iter B full benchmark landed)
 # ---------------------------------------------------------------------------
 anomaly-smoke:
 	$(PYTHON) -m analysis.anomaly.smoke_eval --timeline $(TIMELINE)
+
+# Iter B full benchmark (5 detectors, cell-conditional A-3, bootstrap CI,
+# window sweep, per-feature ablation). Default TIMELINE for this target
+# is timeline_medium (30-phase Iter C production timeline).
+ANOMALY_BENCH_TIMELINE ?= timeline_medium
+anomaly-benchmark:
+	$(PYTHON) -m analysis.anomaly.benchmark_eval --timeline $(ANOMALY_BENCH_TIMELINE)
 
 # ---------------------------------------------------------------------------
 # Phase 5+ targets (placeholders, to be implemented as we progress)

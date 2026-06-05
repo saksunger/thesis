@@ -7,9 +7,22 @@ import pandas as pd
 from analysis.anomaly.labels import _parse_id_list, anomaly_label_columns, label_windows
 
 
-def _mk_features(ue_ids=(1, 2, 3), windows=None) -> pd.DataFrame:
-    """Build a minimal feature-like table for label tests."""
+def _mk_features(
+    ue_ids=(1, 2, 3),
+    windows=None,
+    serving_cells: dict | None = None,
+) -> pd.DataFrame:
+    """Build a minimal feature-like table for label tests.
+
+    Args:
+        ue_ids: tuple of UE ids to populate.
+        windows: list of (t0, t1) tuples per UE.
+        serving_cells: optional mapping `ue_id -> cell_id` so per-window
+            `serving_cell_mode` is deterministic. Defaults to cell 1 for
+            every UE (back-compat with Iter A tests that ignore the column).
+    """
     windows = windows or [(0, 5), (5, 10), (10, 15), (15, 20)]
+    cells = serving_cells or {ue: 1 for ue in ue_ids}
     rows = []
     for ue in ue_ids:
         for w_idx, (t0, t1) in enumerate(windows):
@@ -22,6 +35,7 @@ def _mk_features(ue_ids=(1, 2, 3), windows=None) -> pd.DataFrame:
                     "t_start_s": float(t0),
                     "t_end_s": float(t1),
                     "t_mid_s": (t0 + t1) / 2,
+                    "serving_cell_mode": int(cells.get(ue, 1)),
                 }
             )
     return pd.DataFrame(rows)
@@ -159,6 +173,127 @@ def test_multiple_anomalies_in_same_window_get_joined_id():
     assert out["active_anomaly_id"].iloc[0] == "A-1,A-2"
     assert out["label_A-1"].iloc[0] == 1
     assert out["label_A-2"].iloc[0] == 1
+
+
+def test_a3_cell_conditional_only_labels_targeted_cell_ues():
+    # Iter B: A-3 (interference_spike) targets specific cells. UEs camped
+    # on cell 1 must be labelled positive; UEs on cell 2 must NOT.
+    feats = _mk_features(
+        ue_ids=(1, 2, 3),
+        windows=[(0, 5), (5, 10)],
+        serving_cells={1: 1, 2: 2, 3: 1},
+    )
+    gta = _mk_gta(
+        [
+            {
+                "anomaly_id": "A-3-01",
+                "anomaly_type": "interference_spike",
+                "phase_id": 1,
+                "t_start_s": 6.0,
+                "t_end_s": 9.0,
+                "affected_ue_ids": "all",
+                "affected_cell_ids": "1",
+                "severity": -10.0,
+                "note": "",
+            }
+        ]
+    )
+    out = label_windows(feats, gta)
+    win = out[(out["t_start_s"] == 5.0) & (out["t_end_s"] == 10.0)]
+    # UE 1, 3 -> serving cell 1 -> positive
+    assert win.loc[win.ue_id == 1, "label_anomaly"].iloc[0] == 1
+    assert win.loc[win.ue_id == 3, "label_anomaly"].iloc[0] == 1
+    # UE 2 -> serving cell 2 -> NOT positive (the headline Iter B fix)
+    assert win.loc[win.ue_id == 2, "label_anomaly"].iloc[0] == 0
+
+
+def test_a3_cell_conditional_honours_list_of_cells():
+    # A-3 targeting cells {2, 5}: UEs on cells 2 or 5 are positive,
+    # UEs on cell 1 are not.
+    feats = _mk_features(
+        ue_ids=(1, 2, 3, 4),
+        windows=[(0, 5), (5, 10)],
+        serving_cells={1: 1, 2: 2, 3: 5, 4: 7},
+    )
+    gta = _mk_gta(
+        [
+            {
+                "anomaly_id": "A-3-02",
+                "anomaly_type": "interference_spike",
+                "phase_id": 1,
+                "t_start_s": 6.0,
+                "t_end_s": 9.0,
+                "affected_ue_ids": "all",
+                "affected_cell_ids": "2,5",
+                "severity": -12.0,
+                "note": "",
+            }
+        ]
+    )
+    out = label_windows(feats, gta)
+    win = out[(out["t_start_s"] == 5.0) & (out["t_end_s"] == 10.0)]
+    assert win.loc[win.ue_id == 1, "label_anomaly"].iloc[0] == 0  # cell 1: out
+    assert win.loc[win.ue_id == 2, "label_anomaly"].iloc[0] == 1  # cell 2: in
+    assert win.loc[win.ue_id == 3, "label_anomaly"].iloc[0] == 1  # cell 5: in
+    assert win.loc[win.ue_id == 4, "label_anomaly"].iloc[0] == 0  # cell 7: out
+
+
+def test_per_ue_anomaly_with_all_cells_unaffected_by_cell_filter():
+    # A-1 (rlf_burst) targets UEs not cells. `affected_cell_ids="all"`
+    # must NOT filter anything out — the existing per-UE behaviour stays.
+    feats = _mk_features(
+        ue_ids=(1, 2),
+        windows=[(0, 5), (5, 10)],
+        serving_cells={1: 1, 2: 7},
+    )
+    gta = _mk_gta(
+        [
+            {
+                "anomaly_id": "A-1-01",
+                "anomaly_type": "rlf_burst",
+                "phase_id": 1,
+                "t_start_s": 6.0,
+                "t_end_s": 9.0,
+                "affected_ue_ids": "1",
+                "affected_cell_ids": "all",
+                "severity": -18.0,
+                "note": "",
+            }
+        ]
+    )
+    out = label_windows(feats, gta)
+    win = out[(out["t_start_s"] == 5.0) & (out["t_end_s"] == 10.0)]
+    assert win.loc[win.ue_id == 1, "label_anomaly"].iloc[0] == 1
+    assert win.loc[win.ue_id == 2, "label_anomaly"].iloc[0] == 0
+
+
+def test_missing_affected_cell_ids_column_falls_back_to_all_cells_match():
+    # Backwards compatibility: if the GT table predates the
+    # cell-conditional rule (no `affected_cell_ids` column at all), the
+    # labeller should behave like Iter A — match on UE-scope only.
+    feats = _mk_features(
+        ue_ids=(1, 2),
+        windows=[(0, 5), (5, 10)],
+        serving_cells={1: 1, 2: 7},
+    )
+    gta = pd.DataFrame(
+        [
+            {
+                "anomaly_id": "A-3-OLD",
+                "anomaly_type": "interference_spike",
+                "phase_id": 1,
+                "t_start_s": 6.0,
+                "t_end_s": 9.0,
+                "affected_ue_ids": "all",
+                "severity": -10.0,
+                "note": "",
+            }
+        ]
+    )
+    out = label_windows(feats, gta)
+    win = out[(out["t_start_s"] == 5.0) & (out["t_end_s"] == 10.0)]
+    # Both UEs positive (legacy Iter A behaviour, preserved by the backstop)
+    assert (win["label_anomaly"] == 1).all()
 
 
 def test_anomaly_label_columns_helper():
