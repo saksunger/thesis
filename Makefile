@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test demo demo-ho sweep-ttt eda calibrate-sim calibrate-sweep calibrate sim anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly drift adaptive surrogate end2end clean
 
 help:
 	@echo "Phase 0–3 (implemented):"
@@ -60,8 +60,12 @@ help:
 	@echo "  sim             Build timeline (TIMELINE=$(TIMELINE) -> $(TIMELINE_DIR)/$$TIMELINE.json)"
 	@echo "                  Available timelines: timeline_short (3-phase smoke), timeline_iter_b (6-phase full coverage)"
 	@echo ""
+	@echo "Phase 5 (anomaly benchmark — Iter A smoke implemented):"
+	@echo "  pytest          Run Python unit tests (analysis/anomaly/tests/, requires .venv)"
+	@echo "  anomaly-smoke   Iter A smoke: IsoForest + LOF + PCA-AE on TIMELINE; PR-AUC + FPR per phase + per anomaly"
+	@echo ""
 	@echo "Phase 5+ (placeholders):"
-	@echo "  anomaly         Anomaly detection benchmark"
+	@echo "  anomaly         Anomaly detection benchmark (full, Iter B)"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
 	@echo "  surrogate       Configuration-performance surrogate"
@@ -81,6 +85,9 @@ test:
 		r = runtests('simulator/tests','UseParallel',false); \
 		fprintf('\\n=== %d/%d PASS ===\\n', sum([r.Passed]), numel(r)); \
 		exit(double(any([r.Failed])))"
+
+pytest:
+	$(PYTHON) -m pytest analysis/anomaly/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
@@ -148,6 +155,12 @@ sim:
 		build_timeline('$(TIMELINE_DIR)/$(TIMELINE).json','$(DATA_SIM)/$(TIMELINE)')"
 	@echo "Timeline parquet + ground truth in $(DATA_SIM)/$(TIMELINE):"
 	@ls -lh $(DATA_SIM)/$(TIMELINE)
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Anomaly detection (Iter A smoke landed)
+# ---------------------------------------------------------------------------
+anomaly-smoke:
+	$(PYTHON) -m analysis.anomaly.smoke_eval --timeline $(TIMELINE)
 
 # ---------------------------------------------------------------------------
 # Phase 5+ targets (placeholders, to be implemented as we progress)

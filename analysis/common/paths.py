@@ -26,6 +26,36 @@ BANGLADESH_PARENT: Path = BANGLADESH_DIR / "Parent Dataset"
 BANGLADESH_EVENTS: Path = BANGLADESH_DIR / "Event Statistics"
 
 
+def timeline_dir(name: str) -> Path:
+    """Return the on-disk directory for a Phase 4 simulated timeline.
+
+    Layout (produced by `make sim TIMELINE=<name>`):
+        DATA_SIM / <name> / samples.parquet
+        DATA_SIM / <name> / events.parquet
+        DATA_SIM / <name> / ground_truth_drift.parquet
+        DATA_SIM / <name> / ground_truth_anomaly.parquet
+        DATA_SIM / <name> / run_metadata.json
+    """
+    return DATA_SIM / name
+
+
+def assert_timeline_present(name: str) -> None:
+    """Raise a helpful error if the named timeline has not been generated."""
+    base = timeline_dir(name)
+    required = [
+        base / "samples.parquet",
+        base / "events.parquet",
+        base / "run_metadata.json",
+    ]
+    missing = [p for p in required if not p.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f"Timeline '{name}' is missing required files:\n  "
+            + "\n  ".join(str(p) for p in missing)
+            + f"\n\nRegenerate via:\n  make sim TIMELINE={name}"
+        )
+
+
 def assert_real_data_present() -> None:
     """Raise a helpful error if the real datasets are not copied in."""
     missing: list[Path] = []
