@@ -78,7 +78,7 @@ make matlab-check
 make help                  # show all targets
 make matlab-check          # verify required toolboxes are installed + licensed
 make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
-make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + tools: 222 tests)
+make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools: 257 tests)
 make demo                  # Phase 1 channel/measurement smoke test
 make demo-ho               # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
@@ -95,13 +95,14 @@ make anomaly-benchmark     # Phase 5 Iter B: 5 detectors x bootstrap CI x window
 make drift-benchmark       # Phase 6 Iter A: 7 detectors x 6 streams x bootstrap latency CI on timeline_medium (~4.5 min)
 make adaptive-benchmark    # Phase 7 Iter A: 4 retraining strategies (static / periodic / drift-naive / drift-filtered) x PCA-AE base detector x ADWIN trigger on timeline_medium (~1.5 min)
 make surrogate-benchmark   # Phase 8 Iter A: HistGB point + Conformal Quantile GB on sweep_config_perf (360 rows) x 3 KPIs (HOSR/RLF/PP); group-5-fold CV + inverse query @ median deployment (~1.5 min)
+make end2end-demo          # Phase 9 Iter A: full pipeline replay - drift detect (ADWIN) -> filtered retrain (PCA-AE + bottom-q) -> surrogate query (HistGB + ConformalQuantileGB) -> counterfactual KPI uplift on timeline_medium (~1 min). 4-panel moneyshot figure.
 ```
 
 Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-222 passed           # Python (anomaly + drift + adaptive + config_perf + tools)
+257 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools)
 ```
 
 Expected artifacts:
@@ -159,6 +160,13 @@ data/processed/adaptive_benchmark_timeline_medium/      # Phase 7 Iter A drift-a
   ├── per_window_scores.csv                             #   per-(strategy, window) anomaly score for the appendix
   ├── adaptive_pr_auc_over_time.png                     #   Chapter 7 moneyshot: 2-panel (4-line PR-AUC vs time + cost-vs-gain bar)
   └── benchmark_summary.json                            #   config + drift-phase ids + acceptance verdict
+data/processed/end_to_end_demo_timeline_medium/         # Phase 9 Iter A end-to-end adaptive demo:
+  ├── intervention_log.csv                              #   per-intervention record (t_trigger / drift_streams / current cfg / recommended cfg / 3-KPI predictions with 90% CI / signed uplift per KPI / scenario context echo)
+  ├── per_window.csv                                    #   19 488-row anomaly-score trace (Phase 7 winner's per-window record)
+  ├── retrain_log.csv                                   #   1 warmup + 7 drift-triggered refits with CPU sec + sample-pool sizes
+  ├── sliding_pr_auc.csv                                #   PR-AUC over time (120 s window / 30 s stride) for Panel A
+  ├── end_to_end_moneyshot.png                          #   Chapter 9 defense plate: 4-panel (sliding PR-AUC + anomaly score + intervention table + cumulative HOSR uplift step)
+  └── demo_summary.json                                 #   config + cumulative uplift per KPI + acceptance verdict (D2/D3/D4/D5)
 data/processed/surrogate_benchmark/                     # Phase 8 Iter A config-perf surrogate benchmark:
   ├── table_8_1_point_summary.csv                       #   Table 8.1 (per-target CV MAE / RMSE / R^2, HistGB)
   ├── table_8_2_coverage_summary.csv                    #   Table 8.2 (per-(target, naive|conformal) 90 % PI empirical coverage)
@@ -226,7 +234,7 @@ TBD — pick a license before public release. Cite 3GPP TS/TR documents and data
 | 6. Drift benchmark                              | **Iter A done** (7 detectors × 6 streams × bootstrap median-latency CI on timeline_medium; 8/8 drifts detected by all detectors; precision/recall trade-off captured: ADWIN best FPR ≤ 1 %, MMD/Energy-batch best latency 3 s but 18 % FPR; DDM dominates abrupt mobility/reconfig drifts). 38 drift tests green. |
 | 7. Adaptive framework                           | **Iter A done** (4 retraining strategies × PCA-AE base × ADWIN trigger on `timeline_medium`; both C2 + C3 acceptance PASS: drift-triggered-filtered overall PR-AUC = 0.248 vs periodic 0.115, drift-phase 0.187 vs static 0.057 (+0.13, target ≥ +0.10). Headline finding: **naive retraining self-poisons** (periodic/drift-naive ≈ 0.04 drift-phase), **self-supervised bottom-80 % filter recovers and beats static** under drift). 49 adaptive tests green. |
 | 8. Config–performance surrogate                 | **Iter A done** (HistGB point + Conformal Quantile GB on `sweep_config_perf.parquet` (360 rows × 3 mobility KPIs); group-5-fold CV + inverse query @ median deployment. All 4 acceptance criteria PASS: HOSR MAE = 0.043 (target ≤ 0.05), R² = {0.96, 0.95, 0.72}, conformal 90 % PI empirical coverage = {0.84, 0.72, 0.89} (target ≥ 0.70). Headline finding: **naive quantile GB intervals are systematically too narrow under grouped CV** (~25 pp under-coverage for RLF_rate); **split-conformal calibration recovers** the coverage guarantee across all 3 targets. 12 / 36 inverse-query recommendations satisfy HOSR ≥ 0.95 ∧ RLF ≤ 0.05 ∧ PP ≤ 0.10; top-3 all use TTT = 256 ms.) 72 config_perf tests green. |
-| 9. End-to-end demo                              | planned                             |
+| 9. End-to-end demo                              | **Iter A done** (full pipeline replay on `timeline_medium`: PCA-AE + ADWIN drift detector + filtered retrain + HistGB / ConformalQuantileGB surrogate; 7 drift-triggered interventions in 1 800 s, 9 s walk-forward + 55 s total wall clock. All 4 acceptance criteria PASS. Headline finding: **operator's "bad config push" (D-4 #2 raised TTT 256 → 1024 at t = 780 s) detected within 40 s, surrogate inverse-query recommended (TTT=256, hyst=3, A3=3) recovery config worth +0.619 predicted HOSR uplift in the prevailing deployment context** (0.371 → 0.990). Other 6 interventions are conservative micro-adjustments — system does not over-react when current config is sane. Single 4-panel `end_to_end_moneyshot.png` is the Chapter 9 defense plate.) 35 demo tests green. |
 | 10. Writing + reproducibility package           | planned                             |
 
 See [`docs/plan.md`](docs/plan.md) for live, per-task status.
