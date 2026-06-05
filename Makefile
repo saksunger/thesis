@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark anomaly drift adaptive surrogate end2end clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -84,7 +84,12 @@ help:
 	@echo "                  Outputs Table 7.1, sliding PR-AUC + cost ledger, 2-panel figure."
 	@echo "                  Default timeline: timeline_medium."
 	@echo ""
-	@echo "Phase 7+ (placeholders):"
+	@echo "Phase 8 (config-perf surrogate - Iter A implemented):"
+	@echo "  surrogate-benchmark Iter A: HistGB (point) + QuantileGB (q=0.1/0.5/0.9) x 3 mobility KPIs"
+	@echo "                  (HOSR/RLF_rate/ping_pong_rate) on sweep_config_perf.parquet (360 rows)."
+	@echo "                  Grouped 5-fold CV + inverse query @ median deployment. ~30 s wall clock."
+	@echo ""
+	@echo "Phase 8+ (placeholders):"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
 	@echo "  surrogate       Configuration-performance surrogate"
@@ -106,7 +111,7 @@ test:
 		exit(double(any([r.Failed])))"
 
 pytest:
-	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ tools/tests/ -v
+	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ analysis/config_perf/tests/ tools/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
@@ -237,7 +242,17 @@ adaptive-benchmark:
 	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.adaptive.benchmark_eval --timeline $(ADAPTIVE_BENCH_TIMELINE)
 
 # ---------------------------------------------------------------------------
-# Phase 7+ targets (placeholders)
+# Phase 8 - Config-performance surrogate (Iter A landed)
+# ---------------------------------------------------------------------------
+# HistGB (point estimate) + QuantileGB (q=0.1/0.5/0.9) on the 360-row
+# sweep_config_perf.parquet (training matrix from Phase 4c sweep_static).
+# Outputs Tables 8.1 (per-target CV MAE/R^2/RMSE) + 8.2 (PI coverage)
+# + reliability_diagram.png + inverse_query.png + mae_per_target.png.
+surrogate-benchmark:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.config_perf.benchmark_eval
+
+# ---------------------------------------------------------------------------
+# Phase 8+ targets (placeholders)
 # ---------------------------------------------------------------------------
 
 anomaly:
