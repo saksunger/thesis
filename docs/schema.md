@@ -80,13 +80,35 @@ Convention:
 
 ---
 
-## 4. Open schema questions to resolve in Phase 0 / 1
+## 4. Open schema questions — resolution log
 
-1. **Bangladesh RSRP unit.** Values like `61, 62` are not standard dBm (typically negative). Likely: encoded as `(RSRP_dBm + offset)` per 3GPP TS 36.133 Table 9.1.4-1 (LTE RSRP reporting range 0..97 maps to -140..-44 dBm with 1 dB step). Confirm by checking ranges across all Bangladesh files; if so, apply `rsrp_dbm = encoded - 140` (or similar). **Document mapping in `analysis/common/loaders.py`.**
-2. **Bangladesh CINR sign.** Values include `-8, -4, -6, 1` so might be in dB already. Verify.
-3. **NordicDat timestamp.** Unix epoch float, no timezone. Assume UTC, document.
-4. **Bangladesh measurement reports `.txt`.** Raw L3 RRC dumps. **Not parsed initially** — deferred. If we need richer per-event detail, parser is a side project.
-5. **NordicDat `serving_cell_id` numbering.** 9-digit IDs (e.g., `20738048`) — encoded eNB ID + sector. Not split for v0; treat as opaque ID.
+### 4.1 Bangladesh RSRP / RSRQ unit — RESOLVED (Phase 3 step 1)
+Verified via `analysis/calibration/load_bangladesh.py`:
+- **RSRP** is encoded per 3GPP TS 36.133 §9.1.4 Table 9.1.4-1 (range raw 0..97 → -140..-44 dBm in 1 dB steps). Bangladesh raw values fall in [1, 80], decoded range [-139, -60] dBm with median -89 dBm — physically realistic urban LTE drive-test coverage.
+- **RSRQ** is encoded per TS 36.133 §9.1.7 with the Rel-13 extended range (0..33 → -19.5..-3 dB, 34..46 → -3..+3 dB; both 0.5-dB steps). Bangladesh raw values reach up to 51 — above the Rel-13 max of 46; we clip those to +3 dB. Decoded median -13.5 dB, range -19.5..+3 dB — realistic.
+- **CINR** is **already in dB** (mixed positive/negative values e.g. -11, -6, 1, 31). Treat directly as serving-cell SINR equivalent.
+
+Decoders live in `analysis/calibration/load_bangladesh._decode_rsrp_ts36133` and `._decode_rsrq_ts36133`. The loader auto-detects encoding by value range so the same code path works if a future Bangladesh release ships raw dBm.
+
+### 4.2 Bangladesh timestamps are heterogeneous — RESOLVED (Phase 3 step 1)
+Three distinct formats observed across `Processed Dataset/`:
+- Dataset 1, 2 use `MM:SS.s` (seconds-of-hour) — values 0..3600.
+- Dataset 3 uses ` HH:MM:SSmmm` (seconds-of-day, no decimal point before ms) — values 0..86400.
+- Event Statistics CSVs use `HH:MM:SS.ms` (seconds-of-day, standard) — values 0..86400.
+
+`load_bangladesh._parse_any_time` accepts all three. **Important: `time_s` is not comparable across Bangladesh datasets** — only intra-dataset relative offsets are meaningful. Calibration code should group by `dataset_id` before any temporal aggregation.
+
+### 4.3 NordicDat timestamp — RESOLVED
+Unix epoch float seconds, UTC assumed. **Caveat:** the nominal 65-day span hides the fact that samples are clustered into ~1-2 day bursts (most of the data is collected around 2024-02-15, with a small tail ~one week later). When using NordicDat as a drift baseline (Phase 6), the temporal sampling is bursty rather than uniform.
+
+### 4.4 NordicDat segmentation — RESOLVED
+14 distinct `(operator_id, ran_type, band)` segments. The top two segments (op1/5G-NSA/LTE_B20 with 43 161 rows and op1/LTE/LTE_B20 with 25 988 rows) account for ~76 % of all samples. **Calibration target = these two segments** plus op3/LTE/LTE_B3 (10 390 rows). Smaller segments are statistically too thin for KS-test convergence.
+
+### 4.5 Bangladesh Measurement Reports `.txt` — DEFERRED
+Raw L3 RRC dumps under `Measurement Reports/`. Not parsed initially; revisit only if richer per-event detail becomes necessary.
+
+### 4.6 NordicDat `serving_cell_id` decomposition — DEFERRED
+9-digit IDs (e.g., `20738048`) — encoded eNB ID + sector per 3GPP TS 36.300. Not split for v0; treat as opaque ID for KS-tests on RSRP/SINR distributions.
 
 ---
 

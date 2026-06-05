@@ -77,15 +77,22 @@
 
 **Go/No-Go gate:** PASSED. Proceeding to Phase 3 (calibration).
 
-### Phase 3 — Calibration vs real data (1 week)
-- [ ] `analysis/calibration/load_nordicdat.py` — segment by (operator, RAN, band)
-- [ ] `analysis/calibration/load_bangladesh.py` — join Parent + Event Statistics
-- [ ] KS-test sim RSRP vs NordicDat RSRP (per band)
+### Phase 3 — Calibration vs real data (1 week) — STEP 1 DONE (loaders + EDA)
+- [x] Python env: `requirements.txt` (pandas 2.3, scipy 1.17, pyarrow 21, scikit-learn 1.9, matplotlib 3.10, seaborn, jupyter), `.venv/` under repo root
+- [x] `analysis/common/paths.py` — single source of truth for data paths + presence check
+- [x] `analysis/calibration/load_bangladesh.py` — Processed Dataset (3 schema variants, 3 timestamp formats, RSRP/RSRQ TS 36.133 decoders) + Event Statistics loader, dedup on natural key
+- [x] `analysis/calibration/load_nordicdat.py` — full CSV → canonical schema + `summarize_segments()` + `detect_cell_transitions()` (HO-proxy)
+- [x] `analysis/calibration/eda_report.py` — five-number summaries, segment census, RSRP/SINR CDFs, time-coverage plots
+- [x] **Findings logged in `docs/schema.md` §4** (RSRP encoding confirmed, RSRQ Rel-13 extended range, time format quirks, segmentation target)
+- [x] **Calibration target identified:** top NordicDat segments = op1/5G-NSA/LTE_B20 (43 k rows), op1/LTE/LTE_B20 (26 k), op3/LTE/LTE_B3 (10 k) — together ~85 % of corpus
+- [ ] Per-cell 1-second aggregator on sim side (`+utils.aggregator`) — needed for matched KPI windows
+- [ ] KS-test sim RSRP vs NordicDat RSRP (per target segment) + 95 % CI bootstrap
 - [ ] KS-test sim RSRQ, SINR
-- [ ] Sim HO-event rate vs Bangladesh Intra-LTE-HO rate
-- [ ] Sim HOSR vs Bangladesh Event Stats Success/(Success+Fail)
-- [ ] Tune shadow sigma, cell density, UE speed distribution to minimize KS-stat
+- [ ] Sim HO-event rate vs Bangladesh Intra-LTE-HO rate (~310 attempts / hour as a target)
+- [ ] Sim HOSR vs Bangladesh Event Stats Success/(Success+Fail) = 0.997
+- [ ] Tune shadow σ, cell density, UE speed distribution to minimize KS-stat
 - [ ] Q-Q plots + KS test table for thesis chapter 4.3
+- [ ] `make calibrate` target wired up
 
 **Acceptance:** Main distribution KS p > 0.05 (RSRP, SINR), or honest written justification if not.
 

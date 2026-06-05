@@ -1,0 +1,25 @@
+# Python deps for the analysis side of the thesis pipeline.
+# All deps are pinned to a known-good major to keep reproducibility tight;
+# we re-evaluate yearly. Match Python 3.11+ (see README).
+
+# --- data wrangling ---
+pandas>=2.2,<3.0
+numpy>=1.26,<3.0
+pyarrow>=15.0,<22.0     # parquet IO (simulator output, processed features)
+
+# --- stats / ML ---
+scipy>=1.12,<2.0        # KS-test, distance metrics
+scikit-learn>=1.4,<2.0  # Phase 5 anomaly models
+# river>=0.21,<1.0      # Phase 6/7 online drift + incremental learning (uncomment when needed)
+# lightgbm>=4.3,<5.0    # Phase 8 surrogate (uncomment when needed)
+
+# --- plotting ---
+matplotlib>=3.8,<4.0
+seaborn>=0.13,<1.0      # convenience for distribution plots
+
+# --- notebooks (optional but standard for EDA) ---
+jupyter>=1.0,<2.0
+ipykernel>=6.29,<7.0
+
+# --- quality of life ---
+tqdm>=4.66,<5.0
