@@ -1,0 +1,138 @@
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.orig
+.vscode/
+.idea/
+.fleet/
+.zed/
+
+# --- IDE / AI agent local config ---
+# Cursor / Claude / Copilot local state and per-user agent skills should
+# NEVER be committed to a thesis repo (they're personal tooling, often
+# contain identifiers, and are huge).
+.cursor/
+.claude/
+.continue/
+.aider*
+.agents/
+skills-lock.json
+# AI memory files commonly auto-written by agents in repo root
+CLAUDE.md
+AGENTS.md
+.augment*
+.copilot*
+
+# --- MATLAB ---
+*.asv
+*.mex*
+*.mat
+*.fig
+slprj/
+sccprj/
+*.autosave
+*.m~
+octave-workspace
+# MATLAB IDE session metadata
+.matlab/
+matlab_crash_dump.*
+
+# --- MATLAB ---
+*.asv
+*.mex*
+*.mat
+*.fig
+slprj/
+sccprj/
+*.autosave
+octave-workspace
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+.python-version
+.envrc
+# poetry/uv lock files are project artifacts; keep them. but generic
+# *.lock would match too aggressively, so we exclude only common ones.
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Jupyter ---
+*.nbconvert.ipynb
+
+# --- Data (large, DVC-tracked or external) ---
+data/raw_public/**
+!data/raw_public/.gitkeep
+!data/raw_public/README.md
+data/simulated/**
+!data/simulated/.gitkeep
+!data/simulated/README.md
+data/processed/**
+!data/processed/.gitkeep
+!data/processed/README.md
+data/external/**
+!data/external/.gitkeep
+
+# --- Logs / outputs ---
+logs/
+outputs/
+runs/
+*.log
+*.out
+
+# --- Paper build artifacts ---
+paper/build/
+paper/*.aux
+paper/*.log
+paper/*.bbl
+paper/*.blg
+paper/*.toc
+paper/*.out
+paper/*.synctex.gz
+paper/*.pdf
+!paper/figures/*.pdf
+
+# --- DVC ---
+/data/**/*.dvc.lock
+.dvc/cache/
+.dvc/tmp/
+
+# --- Personal notes / writing aids ---
+# Private writing guides, AI prompt files, supervisor notes, etc.
+# Keep these local; only the thesis itself goes in `paper/`.
+thesis_guide.md
+notes/
+scratch/
+*.draft.md
+
+# --- Thesis administrative documents ---
+# The official thesis card (Karta pracy dyplomowej) contains the
+# student's personal data and supervisor signatures. The public scope
+# is already described in README.md and docs/plan.md, so the card
+# itself is kept local. Override with `git add -f` if you really want
+# to commit it.
+Karta pracy dyplomowej*.docx
+Karta pracy dyplomowej*.pdf
+
+# --- Misc ---
+.env
+.env.local
+.env.*.local
+*.pid
+*.seed
+node_modules/
+package-lock.json

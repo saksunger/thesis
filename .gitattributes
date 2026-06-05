@@ -1,0 +1,28 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# MATLAB
+*.m       text eol=lf diff=matlab
+*.mlx     binary
+*.mat     binary
+*.fig     binary
+*.slx     binary
+*.mdl     binary
+
+# Notebooks: keep diffs sane
+*.ipynb   text eol=lf
+
+# Data
+*.parquet binary
+*.csv     text eol=lf
+*.tsv     text eol=lf
+
+# Docs / configs
+*.md      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+
+# LaTeX
+*.tex     text eol=lf
+*.bib     text eol=lf
