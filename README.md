@@ -41,6 +41,7 @@ See [`docs/plan.md`](docs/plan.md) for the full phased plan, [`docs/design.md`](
 │   ├── config_perf/       # Surrogate model
 │   ├── demo/              # End-to-end timeline
 │   └── common/            # Shared loaders + metrics
+├── tools/                 # Project-level Python helpers (timeline gen, etc.)
 ├── paper/                 # Thesis source (LaTeX)
 ├── docker/                # Reproducibility container
 ├── Makefile               # `make sim`, `make anomaly`, `make all`
@@ -71,27 +72,32 @@ export MATLAB_DIR=/opt/matlab/R2024a/bin
 make matlab-check
 ```
 
-### Phase 0–4a targets (currently usable)
+### Phase 0–5a targets (currently usable)
 
 ```bash
-make help            # show all targets
-make matlab-check    # verify required toolboxes are installed + licensed
-make test            # run all MATLAB unit tests (Phases 1–4a: 56 tests)
-make demo            # Phase 1 channel/measurement smoke test
-make demo-ho         # Phase 2 HO event loop smoke test (single UE)
-make sweep-ttt       # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
-make eda             # Phase 3 EDA report (Bangladesh + NordicDat)
-make calibrate-sim   # Phase 3 calibration scenario (12 UE × 120 s → parquet, ~6 s)
-make calibrate-sweep # Phase 3 3×3 (ISD × area) tuning sweep + heatmap (~30 s)
-make calibrate       # Phase 3 end-to-end: sim run → KS-test → summary CSV + plots
-make sim             # Phase 4b timeline build (TIMELINE=timeline_iter_b, ~70 s, 4 drifts + 4 anomalies)
-                     #   or: make sim TIMELINE=timeline_short  for a 3-phase smoke build
+make help                  # show all targets
+make matlab-check          # verify required toolboxes are installed + licensed
+make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
+make pytest                # run all Python unit tests (anomaly + tools: 38 tests)
+make demo                  # Phase 1 channel/measurement smoke test
+make demo-ho               # Phase 2 HO event loop smoke test (single UE)
+make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
+make eda                   # Phase 3 EDA report (Bangladesh + NordicDat)
+make calibrate-sim         # Phase 3 calibration scenario (12 UE × 120 s → parquet, ~6 s)
+make calibrate-sweep       # Phase 3 3×3 (ISD × area) tuning sweep + heatmap (~30 s)
+make calibrate             # Phase 3 end-to-end: sim run → KS-test → summary CSV + plots
+make sim                   # Phase 4 timeline build (TIMELINE=timeline_iter_b, ~70 s, or timeline_medium ~5 min)
+                           #   variants: TIMELINE=timeline_short | timeline_iter_b | timeline_medium
+make sweep-static          # Phase 4c: 360-run (TTT × hyst × A3 × seed) static sweep → config-perf matrix
+make gen-timeline-medium   # Phase 4c: regenerate timeline_medium.json via tools/gen_timeline.py
+make anomaly-smoke         # Phase 5 Iter A: IsoForest + LOF + PCA-AE smoke eval on TIMELINE
 ```
 
-Expected output of `make test`:
+Expected output of `make test` and `make pytest`:
 
 ```
-=== 56/56 PASS ===
+=== 88/88 PASS ===   # MATLAB
+38 passed            # Python
 ```
 
 Expected artifacts:
@@ -116,6 +122,13 @@ data/simulated/timeline_iter_b/events.parquet           # Phase 4b: HO/RLF/PING_
 data/simulated/timeline_iter_b/ground_truth_drift.parquet    # Phase 4b: 4 injected drift labels (D-1..D-4)
 data/simulated/timeline_iter_b/ground_truth_anomaly.parquet  # Phase 4b: 4 injected anomaly labels (A-1, A-2, A-3, A-5)
 data/simulated/timeline_iter_b/run_metadata.json        # timeline source, seed, git SHA
+data/simulated/timeline_medium/samples.parquet          # Phase 4c: 30-phase production timeline (~3M rows)
+data/simulated/timeline_medium/events.parquet           # Phase 4c: HO/RLF/PP events across the timeline
+data/simulated/timeline_medium/ground_truth_drift.parquet    # Phase 4c: 8 drift labels (2 per D-1..D-4)
+data/simulated/timeline_medium/ground_truth_anomaly.parquet  # Phase 4c: 40 anomaly labels (10 per A-1/A-2/A-3/A-5)
+data/simulated/sweep_static/sweep_config_perf.parquet   # Phase 4c: 360-row (TTT × hyst × A3 × seed) config-perf training matrix for Phase 8 surrogate
+data/simulated/sweep_static/sweep_metadata.json         # grid, seeds, git SHA
+data/processed/anomaly_smoke_timeline_iter_b/           # Phase 5 Iter A smoke results (per-phase / per-anomaly metrics, summary plot)
 ```
 
 Headline Phase 3 result (vs NordicDat op1/5G-NSA/LTE_B20, see [`docs/calibration_findings.md`](docs/calibration_findings.md)):
@@ -167,8 +180,8 @@ TBD — pick a license before public release. Cite 3GPP TS/TR documents and data
 | 1.1. Simulator channel core (TR 38.901 UMa)     | **done** (14 unit tests)            |
 | 2. HO mechanism v0 (TS 38.331 A3 + RLF)         | **done** (20 unit tests, sweep ok)  |
 | 3. Calibration vs real data (KS-test)           | **done** (KS ≤ 0.20, see findings)  |
-| 4. Data generation (sweeps + drift + anomaly)   | **Iter A + B done** (4 drift types + 4 anomaly injectors end-to-end; 76/76 tests green); Iter C (production timelines + static sweep) next |
-| 5. Anomaly benchmark                            | planned                             |
+| 4. Data generation (sweeps + drift + anomaly)   | **Iter A + B + C done** (4 drifts + 4 anomalies; 360-run static sweep for Phase 8; 30-phase production timeline; per-phase UE continuity with Random-Direction model; 88 MATLAB + 38 Python tests green) |
+| 5. Anomaly benchmark                            | **Iter A done** (smoke on timeline_iter_b: both acceptance criteria PASS, drift-degradation hypothesis validated); Iter B (full benchmark on timeline_medium) next |
 | 6. Drift benchmark                              | planned                             |
 | 7. Adaptive framework                           | planned                             |
 | 8. Config–performance surrogate                 | planned                             |

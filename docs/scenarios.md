@@ -97,10 +97,10 @@ cumulative start time) so detectors can join cleanly against
 
 ## 4. Timeline assembly
 
-A "timeline" is a 30/60/90-day equivalent simulation built by concatenating phases:
-1. Baseline warmup (≥ 7 days equivalent) → models can learn "normal."
-2. Sequence of `(drift_event, anomaly_events_within_drift)` interspersed with baseline gaps.
-3. Recovery / steady-state tail (≥ 7 days).
+A "timeline" is a multi-phase simulation built by concatenating phases:
+1. Baseline warmup → detectors can learn "normal".
+2. Sequence of `(drift_phase, anomaly_events)` interspersed with baseline recovery gaps.
+3. Recovery / steady-state tail for post-drift evaluation.
 
 `simulator/runners/build_timeline.m` takes a timeline-config **JSON** file
 (we chose JSON over YAML because MATLAB R2023b's `readstruct` does not
@@ -110,7 +110,39 @@ and emits:
 - `events.parquet` (HO_ATTEMPT/SUCCESS/FAIL + RLF + PING_PONG events; schema = `docs/schema.md` §2 + per-phase config columns)
 - `ground_truth_drift.parquet` (one row per drift event, time bounds derived from phase durations)
 - `ground_truth_anomaly.parquet` (one row per anomaly event — landing in Phase 4 Iter B)
-- `run_metadata.json` (timeline source, MATLAB version, git SHA, sample/event counts, elapsed)
+- `run_metadata.json` (timeline source, MATLAB version, git SHA, sample/event counts, elapsed, `carry_over_ues` flag)
+
+**Iter C — UE state carry-over across phases.** When `global.carry_over_ues=true`
+in the timeline JSON (default false for backward compatibility), each
+UE's end-of-phase **position** is threaded into the next phase as the
+start-of-phase position. **Direction is freshly randomised per phase**
+(Random-Direction mobility model): preserving direction across phases
+made UEs walk in a straight line off the cell footprint after a handful
+of phases, dropping RSRP by > 60 dB across a 30-phase timeline — caught
+during Iter C integration and switched to Random Direction. New UEs
+added by D-1 traffic shift get fresh random initialisation. UEs whose
+carry-over endpoint drifts outside the `[-area_m, area_m]` box (e.g. a
+fast UE near the edge whose phase-end position exits the area)
+re-initialise randomly in the next phase, keeping per-UE mobility
+bounded. Implementation: `+utils.run_phase` exposes optional
+`ue_state_in` arg and a third `ue_state_out` return; `build_timeline.m`
+threads the state when the flag is set.
+
+**Iter C — parametric generator.** Production timelines are not authored by
+hand; `tools/gen_timeline.py` generates them deterministically given
+(`--rng-seed`, `--n-phases`, `--drifts-per-type`, `--anomalies-per-type`,
+`--head-baseline-phases`, `--tail-baseline-phases`). Drift phases are
+evenly spaced with at least one baseline gap; anomalies are forbidden
+from the head-baseline phases so detectors get a strictly clean training
+window. The script is unit-tested under `tools/tests/`.
+
+### 4.1 Shipped timelines
+
+| Timeline ID | File | Phases | Total duration | Drifts | Anomalies | Carry-over | Purpose |
+|---|---|---|---|---|---|---|---|
+| `timeline_short` | `+scenarios/timelines/timeline_short.json` | 3 | 180 s | 1 (D-2) | 0 | no | Smoke test for build pipeline |
+| `timeline_iter_b` | `+scenarios/timelines/timeline_iter_b.json` | 6 | 360 s | 4 (D-1..D-4, 1 each) | 4 (A-1, A-2, A-3, A-5, 1 each) | no | Iter B coverage validation (one of each scenario) |
+| `timeline_medium` | `+scenarios/timelines/timeline_medium.json` | 30 | 1 800 s | 8 (2 per type) | 40 (10 per type) | yes | Iter C production timeline for Phase 5 Iter B PR-AUC + bootstrap CI |
 
 ---
 
@@ -144,9 +176,10 @@ Given (1)+(2)+(3), `make sim TIMELINE=<name>` reproduces bit-identical output (v
 - [x] `tests/test_scenarios.m` extended (D-1/D-3/D-4 builders + override paths), `tests/test_anomalies.m` (~13 stand-alone + dispatcher + integration tests), `tests/test_build_timeline.m` extended (routing + bad-phase error)
 - [x] End-to-end smoke run: 6-phase / 540 K samples / 1908 events; all 4 drifts + 4 anomalies observable in the data (see `data/simulated/timeline_iter_b/`)
 
-**Iter C — LATER:**
-- [ ] `runners/sweep_static.m` — TTT × hyst × A3 × seeds (parfor)
-- [ ] `timeline_medium.json` (30-day equivalent, duration-compressed)
-- [ ] `timeline_long.json` (90-day equivalent)
-- [ ] D-5..D-8 + A-4 / A-6 / A-7 if time permits
-- [ ] Per-phase n_ue continuity (UEs persist across phase boundaries) — currently each phase starts with a fresh UE population
+**Iter C — DONE (hybrid scope):**
+- [x] `runners/sweep_static.m` — 360-run (TTT × hyst × A3 × seed) sweep with parfor; writes `sweep_config_perf.parquet` for the Phase 8 surrogate. ADR-15 KPIs only. Wall: 608 s on 16 workers.
+- [x] Per-phase UE continuity — `global.carry_over_ues` flag carries position across phases; **direction freshly randomised per phase (Random-Direction mobility model)** to keep UE motion bounded inside the cell footprint. Out-of-area carry-over endpoints trigger re-init. 8 new tests in `test_run_phase.m` / `test_build_timeline.m`.
+- [x] `tools/gen_timeline.py` parametric generator + 13 Python unit tests under `tools/tests/`.
+- [x] `timeline_medium.json` generated (30 phases × 60 s, 8 drift phases, 40 anomalies, `carry_over_ues=true`). End-to-end build: 93 s producing 2.3 M samples / 6.7 k events; per-phase RSRP stays in [-96, -87] dBm and SINR in [3, 8] dB across all 30 phases; all 4 drift signatures visible against neighbouring baseline phases.
+
+**Iter D — DEFERRED:** Per-tick load-dependent interference (D-1 upgrade + ADR-13 RSRQ residual), `timeline_long.json`, D-5..D-8 + A-4/A-6/A-7. Each deferred item is justified in `docs/plan.md` § Iter C; we want Phase 5 Iter B results before deciding which additional drifts/anomalies are worth investing in.

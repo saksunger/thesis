@@ -1,6 +1,6 @@
 # Thesis Plan — Living Document
 
-> Last updated: 2026-06-05 (Phase 5 Iter A smoke done — 3 detectors × 4 anomalies × 6 phases on timeline_iter_b; both acceptance criteria PASS; 76 MATLAB + 25 Python tests green. Drift-degradation hypothesis validated: LOF FPR 5.8× baseline on D-3 mobility drift.)
+> Last updated: 2026-06-05 (Phase 4 Iter C done — `sweep_static.m` (360-run TTT × hyst × A3 × seeds grid, 608s on 16 workers), `tools/gen_timeline.py` parametric generator, `timeline_medium.json` (30 phases × 60s, 8 drift phases, 40 anomalies; built end-to-end in 93s producing 2.3M samples / 6.7k events; all 4 drift types visible per phase-comparison), per-phase UE continuity with Random-Direction mobility model. **88 MATLAB + 38 Python tests green**. Phase 8 surrogate now has its training matrix; Phase 5 Iter B unblocked.)
 > Owner: Sevda
 > Track: **Simulator-based** custom MATLAB micro-simulator.
 
@@ -158,16 +158,35 @@
   - A-3: targeted cell SINR median dropped 12.9 → 2.3 dB (≈ injected `delta_db = -10`).
   - A-5: targeted UE net SINR −9 dB over the 60 s ramp (matches `-0.15 dB/s × 60 s`).
 
-**Iteration C — Production timelines + static sweep (LATER)**
-- [ ] `runners/sweep_static.m` — TTT × hyst × A3 × 20 seeds (parfor)
-- [ ] `timelines/timeline_medium.json` — 30-day equivalent (compressed via duration scaling)
-- [ ] `timelines/timeline_long.json` — 90-day equivalent
-- [ ] Per-tick load-dependent interference (upgrade D-1 from n_ue-proxy to real load model; also addresses ADR-13 RSRQ deferral)
-- [ ] Per-phase UE continuity (UEs persist across phase boundaries) — currently each phase resets UE population
-- [ ] D-5..D-8 + A-4 / A-6 / A-7 if time permits
-- [ ] Optional: parfor in `build_timeline` over phases (independent) or over UEs within a phase
+**Iteration C — Production timelines + static sweep (DONE)**
+Scope chosen via hybrid plan (see chat history): the three highest-leverage Iter C items shipped now; the rest deferred to Iter D so we can iterate on Phase 5 Iter B results before re-investing in simulator infrastructure.
 
-**Acceptance (Iter A + B):** ✓ Parquet artefacts in `data/simulated/timeline_iter_b/` (540 K samples, 1 908 events); ground-truth drift + anomaly tables align to injected effects; all 4 drift types + all 4 anomaly types observable in raw data; 76/76 unit tests green.
+- [x] `runners/sweep_static.m` — TTT (3) × hyst (4) × A3-off (3) × seeds (10) = 360 runs, parfor, writes `data/simulated/sweep_static/sweep_config_perf.parquet` + `sweep_metadata.json`. Each row carries the controlled knobs and the mobility KPIs (ADR-15) used by the Phase 8 surrogate.
+- [x] `+utils.run_phase` accepts optional `ue_state_in` and returns `ue_state_out`; `build_timeline.m` threads state across phases when `global.carry_over_ues=true`. Default false → fully backward-compatible. New UEs (D-1 traffic-shift) get random init; existing UEs keep position **and direction is freshly randomised per phase (Random-Direction mobility model)**. Discovered during Iter C integration that preserving direction made UEs walk straight off the cell footprint after a handful of phases (timeline_medium phase-30 RSRP drifted from −96 to −159 dBm — see commit fix); switched to Random-Direction + out-of-area re-init. Resulting timeline_medium keeps per-phase RSRP within [−96, −87] dBm and SINR within [3, 8] dB across all 30 phases.
+- [x] `tools/gen_timeline.py` — parametric generator (`--n-phases`, `--drifts-per-type`, `--anomalies-per-type`, `--carry-over-ues`, `--rng-seed`). Tests cover layout determinism, head-baseline cleanliness, anomaly-windows-in-phase, A-3 cell-id bounds, affected-UE bounds vs per-phase n_ue.
+- [x] `+scenarios/timelines/timeline_medium.json` — generated 30-phase × 60s production timeline (1 800 s ≈ 30 min sim). 22 baseline phases, 8 drift phases (2 of each D-1..D-4), 40 anomaly instances (10 of each A-1/A-2/A-3/A-5). `carry_over_ues=true`. Head/tail of 3 baseline phases each kept clean for detector training/recovery analysis.
+- [x] Tests: `test_sweep_static.m` (4: schema, metadata, rate finiteness, TTT-monotonicity) + `test_run_phase.m` (6 new: ue_state shape, position continuity, displacement-scales-with-speed, new-UE random init, out-of-area triggers re-init, random-direction-per-phase) + `test_build_timeline.m` (2 new: carry-over flag end-to-end + default-false discontinuity) + `tools/tests/test_gen_timeline.py` (13). Totals: **88 MATLAB tests / 38 Python tests, all green**.
+- [x] Makefile: `make sweep-static`, `make gen-timeline-medium`; `pytest` target picks up `tools/tests/`.
+
+**Deferred to Iter D** (re-evaluated after Phase 5 Iter B feedback):
+- [ ] Per-tick load-dependent interference (upgrade D-1 from n_ue-proxy to real PRB-occupancy → SINR penalty; also addresses ADR-13 RSRQ residual)
+- [ ] `timelines/timeline_long.json` — 90-day equivalent (overkill until medium drives clear need)
+- [ ] D-5..D-8 + A-4 / A-6 / A-7 (additional scenarios; pick based on which failure modes Iter B exposes)
+- [ ] Optional: parfor in `build_timeline` over phases / over UEs within a phase
+
+**Acceptance (Iter A + B + C):** ✓
+- Iter A + B: Parquet artefacts in `data/simulated/timeline_iter_b/` (540 K samples, 1 908 events); all 4 drift types + 4 anomaly types observable.
+- Iter C: 360-run `sweep_config_perf.parquet` (Phase 8 training matrix) + `timeline_medium.json` (Phase 5 Iter B statistical-power source) + UE-continuity flag (per-UE drift trajectory realism). All 88/88 MATLAB + 38/38 Python tests green.
+- Iter C drift visibility (computed from regenerated `timeline_medium`, baseline phase vs the immediately-following drift phase):
+
+  | Drift | Phase pair | RSRP base→drift (dBm) | SINR base→drift (dB) | Events base→drift |
+  |---|---|---|---|---|
+  | D-2 | 4 → 5  | −93.3 → −89.7 | 3.1 → 4.1  | 197 → 518 |
+  | D-3 | 7 → 8  | −89.9 → −93.4 | 4.0 → 4.7  | 176 → 524 |
+  | D-4 | 10 → 11 | −91.1 → −88.2 | 5.8 → 7.7 | 216 → 125 (events ↓: TTT/hyst raised) |
+  | D-1 | 22 → 23 | −90.7 → −92.2 | 7.2 → 6.2 | 150 → 312 (n_ue 12→24)|
+
+  D-4 produces *fewer* events (longer dwell time per UE, as designed for the reconfig drift). The other three produce 2-3× more events. This is the kind of clean, defensible drift-signature table the thesis chapter on Phase 4 needs.
 
 ### Phase 5 — Anomaly benchmark (1 week)
 **Feature scope (per ADR-15):** sliding-window aggregates over mobility KPIs only. No throughput/latency/jitter features. Window-feature whitelist:
