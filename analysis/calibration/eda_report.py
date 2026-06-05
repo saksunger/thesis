@@ -1,5 +1,15 @@
 """One-shot EDA report for both real datasets.
 
+Per ADR-14 the thesis is scoped to **5G NR SA, intra-RAT, inter-gNB
+Xn HO**. The EDA here therefore serves two distinct purposes:
+
+* **NordicDat** — in scope. The output is consumed by the calibration
+  pipeline (`ks_test.py`) and by thesis chapter 4.3 (calibration).
+* **Bangladesh** — out of scope for calibration. The output is kept
+  for thesis chapter 2 ("Related Work / Real-network context") as an
+  order-of-magnitude reference for LTE intra-eNB HO rates / coverage
+  distributions, not as a calibration target.
+
 Outputs:
 - Console: per-dataset row count, missingness, RSRP/SINR five-number summary,
   segment census (NordicDat), HO event census (Bangladesh).

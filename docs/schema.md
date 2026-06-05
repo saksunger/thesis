@@ -1,5 +1,7 @@
 # KPI Schema and Canonical Naming
 
+> **Scope (ADR-14):** simulator output is **always** `ran_type = NR_SA` (5G NR Standalone, intra-RAT, inter-gNB Xn HO). Real-data rows may carry `LTE` or `NR_NSA` for diagnostic comparison only — see `docs/calibration_findings.md` §0.
+
 This is the single source of truth for KPI naming across the simulator, real datasets, and ML pipeline. Every column referenced in code or thesis text must be in this table.
 
 Convention:
@@ -29,7 +31,7 @@ Convention:
 | `ue_heading_deg`      | deg   | `ue.vel.heading`   | NULL                                | `heading`              | |
 | `throughput_dl_kbps`  | kbps  | NULL (out of scope)| NULL                                | `throughput_downlink`  | Used only in calibration / drift features on real side |
 | `throughput_ul_kbps`  | kbps  | NULL               | NULL                                | `throughput_uplink`    | |
-| `ran_type`            | enum  | const `5G_NSA`/`LTE` per scenario | NULL (LTE inferred)        | `ran` (`LTE` / `5G-NSA`) | |
+| `ran_type`            | enum  | const `NR_SA` (scope per ADR-14)  | NULL (LTE inferred)        | `ran` (`LTE` / `5G-NSA`) | Sim emits only `NR_SA`; the `LTE` / `NR_NSA` enum values exist only to label real-data rows in the calibration pipeline. |
 | `band`                | enum  | const per scenario | NULL                                | `band` (`LTE_B3` etc.) | |
 | `operator_id`         | int   | NULL               | NULL                                | `operator`             | |
 
@@ -102,7 +104,7 @@ Three distinct formats observed across `Processed Dataset/`:
 Unix epoch float seconds, UTC assumed. **Caveat:** the nominal 65-day span hides the fact that samples are clustered into ~1-2 day bursts (most of the data is collected around 2024-02-15, with a small tail ~one week later). When using NordicDat as a drift baseline (Phase 6), the temporal sampling is bursty rather than uniform.
 
 ### 4.4 NordicDat segmentation — RESOLVED
-14 distinct `(operator_id, ran_type, band)` segments. The top two segments (op1/5G-NSA/LTE_B20 with 43 161 rows and op1/LTE/LTE_B20 with 25 988 rows) account for ~76 % of all samples. **Calibration target = these two segments** plus op3/LTE/LTE_B3 (10 390 rows). Smaller segments are statistically too thin for KS-test convergence.
+14 distinct `(operator_id, ran_type, band)` segments. The top two segments (op1/5G-NSA/LTE_B20 with 43 161 rows and op1/LTE/LTE_B20 with 25 988 rows) account for ~76 % of all samples. Per ADR-14 the simulator is locked to `NR_SA`, so the **primary calibration target is `op1 / 5G-NSA / LTE_B20`** (closest 5G-flavored real-world radio reference). The two large LTE segments (`op1 / LTE / LTE_B20`, `op3 / LTE / LTE_B3`) are still loaded and KS-tested, but reported as **cross-RAN sanity references only** — they are not calibration targets. Smaller NordicDat segments are statistically too thin for KS-test convergence and are ignored.
 
 ### 4.5 Bangladesh Measurement Reports `.txt` — DEFERRED
 Raw L3 RRC dumps under `Measurement Reports/`. Not parsed initially; revisit only if richer per-event detail becomes necessary.

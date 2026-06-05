@@ -1,5 +1,13 @@
 """Loader for the Bangladesh LTE drive-test dataset.
 
+**Scope note (ADR-14):** Bangladesh is **out of scope** for the
+simulator calibration target list (it is LTE-only; the thesis is
+locked to 5G NR SA). This loader is retained for use by the EDA
+report (chapter 2 "Related Work / Real-network context" of the
+thesis) and as a one-off order-of-magnitude reference for LTE
+intra-eNB HO rates. It is **not** wired into `make calibrate`. Do
+not call from the KS-test pipeline.
+
 Two consumer-facing entry points:
 
 - `load_bangladesh_samples()` — per-sample feed (RSRP/RSRQ/CINR/timestamp +

@@ -2,11 +2,18 @@
 
 Every spec clause cited in code or thesis must be listed here. Format: spec — clause — what we use — local PDF path.
 
+> **Scope reminder (ADR-14):** the thesis is bounded to **5G NR Standalone, intra-RAT, inter-gNB Xn handover**. The TS 38-series and TR 38-series specs below are **normative** for the simulator and ML pipeline. The TS 36-series (LTE) specs are kept for **background only** — they are required to decode the Bangladesh dataset's encoded RSRP/RSRQ columns, but do **not** drive any design decision and are not cited as authority in the methodology chapter.
+
 > **PDFs downloaded** to `data/external/3gpp/` from ETSI public mirror (<https://www.etsi.org/standards-search>). See that folder's README for download commands and file inventory. All pinned to **Release 17, latest maintenance** (Jun 2026).
 
 ---
 
-## NR (5G) — TS 38 series
+## NR (5G) — TS 38 series (normative)
+
+### TS 38.300 v17.10.0 — NR; Overall description; Stage 2
+- **§9.2.3 Mobility in connected mode** — taxonomy of NR HO types. Defines **Xn-based HO** (§9.2.3.2 — used by our simulator, no AMF involvement; source gNB sends HO Request over Xn directly to target gNB) vs **N2-based HO** (§9.2.3.3 — explicitly out of scope per ADR-14). Defines inter-gNB vs intra-gNB cases.
+- Cite when explaining why each cell in the 7-hex layout is treated as a distinct gNB ⇒ every HO event is inter-gNB Xn by construction.
+- Local PDF: `data/external/3gpp/ts_138300v171000p.pdf` *(to download)*
 
 ### TS 38.331 v17.16.0 — NR RRC Protocol Specification
 - **§5.3.10 Radio link failure related actions** — RLF detection (T310, N310, N311 counters).
@@ -45,14 +52,16 @@ Every spec clause cited in code or thesis must be listed here. Format: spec — 
 
 ---
 
-## LTE (4G) — TS 36 series (for Bangladesh dataset interop)
+## LTE (4G) — TS 36 series (BACKGROUND ONLY, not normative for thesis)
+
+> Per ADR-14 these specs are out of the design scope. They are kept solely to interpret the Bangladesh public dataset, which is excluded from the calibration target list. Do not cite as authority in the methodology chapter.
 
 ### TS 36.331 v17.16.0 — E-UTRA RRC Protocol Specification
-- **§5.5.4.4 Event A3** — LTE counterpart of NR A3 (identical structure). Reference when interpreting Bangladesh "Intra LTE-HO" events.
+- **§5.5.4.4 Event A3** — LTE counterpart of NR A3 (identical structure). Reference only when explaining that the Bangladesh "Intra LTE-HO" events are *analogous* to our NR scope (chapter 2 "Related Work / Real-network context"). Do not cite for design.
 - Local PDF: `data/external/3gpp/ts_136331v171600p.pdf`
 
 ### TS 36.133 v17.16.0 — E-UTRA Requirements for support of RRM
-- **§9.1.4 RSRP measurement reporting range** — encoding `0..97` ↔ `-140..-44 dBm` step 1 dB. **Use this to decode Bangladesh `Serving Cell RSRP` column** (suspected encoded form).
+- **§9.1.4 RSRP measurement reporting range** — encoding `0..97` ↔ `-140..-44 dBm` step 1 dB. **Used by `load_bangladesh._decode_rsrp_ts36133` to decode the Bangladesh dataset's encoded RSRP column.** Background only — no design dependence.
 - Local PDF: `data/external/3gpp/ts_136133v171600p.pdf`
 
 ---
