@@ -229,10 +229,35 @@ Both written via `parquet.write` from MATLAB Communications Toolbox / `parquetwr
 
 ---
 
+## ADR-15 — KPI scope: mobility KPIs only (TS 28.554 §6.3.1–2)
+*2026-06-05 · accepted (orthogonal to ADR-14; tightens the KPI axis that ADR-14 left implicit)*
+
+**Context.** ADR-14 locked the *HO-type / RAT* axis (NR SA, intra-RAT, inter-gNB Xn) but did not address *which KPI family* the thesis monitors over those handovers. The earlier conference paper (`paper.tex`) listed downlink throughput alongside RSRP/SINR as a monitored KPI, implying a service-quality (3GPP TS 28.554 §6.3.6) monitoring scope. The current simulator implements PHY + RRC (L1 + L3) faithfully but **does not implement L2 MAC scheduling, MCS feedback, BLER curves, or any offered-load model** — so throughput, packet drop rate, and latency cannot be reported in a 3GPP-faithful way without weeks of additional scope. An examiner could legitimately ask "you have NR Xn HO modelled, why no throughput?" so the scope decision needs a written gerekçe rather than mental note.
+
+**Decision.** Lock the thesis monitoring scope to **mobility KPIs as defined in 3GPP TS 28.554 §6.3.1–6.3.2**:
+
+1. **In scope** (computed from `events.parquet`): `HOSR` (HO success rate), `HOFR` (HO failure rate), `RLF` rate, `ping-pong` rate; plus the underlying radio measurements `RSRP_serving`, `RSRQ_serving`, `SINR_serving`, `RSRP_neighbor` (computed in `samples.parquet`) which the detectors aggregate into window features.
+2. **Out of scope** (TS 28.554 §6.3.6 service quality): downlink/uplink throughput, packet drop rate, end-to-end latency, jitter. The simulator does not produce these and the thesis does not claim them.
+3. **Implication for Phase 5+ feature design**: anomaly/drift detectors consume only mobility-layer features; the surrogate model in Phase 8 targets only mobility-layer KPIs.
+
+**Consequences.**
+- (+) Clean alignment between simulator capabilities and claimed KPIs — no over-claim risk.
+- (+) Defensible against "why not throughput?": *throughput requires an L2 MAC stack we explicitly do not model; mobility KPIs per TS 28.554 §6.3.1–2 are the canonical mobility-management metrics and are sufficient for the drift-aware-monitoring research question.*
+- (+) Throughput is monotone-correlated with `SINR_serving` (Shannon bound), so no detector information is lost — any throughput-driven anomaly is already visible in SINR.
+- (−) The earlier paper (`paper.tex`) mentions "lower downlink throughput" in the preliminary findings sentence. This sentence will be rewritten in the thesis Data Strategy chapter as "higher HO failure rate and poorer average signal conditions". Paper itself stays as-is (conference snapshot).
+- (−) Loses the ability to evaluate user-experience metrics directly. Mitigation: the thesis explicitly frames the contribution as *mobility-layer* monitoring; user-experience evaluation is named as future work.
+
+**Code-level enforcement.**
+- Phase 5 `analysis/anomaly/features.py` window aggregator MUST consume only the columns enumerated above.
+- Phase 8 surrogate target enum is `{HOSR, HOFR_rate, RLF_rate, ping_pong_rate}`; no throughput target.
+- Sample-level schema (`docs/schema.md` §1) stays mobility-focused; no `throughput_*` columns are added.
+
+---
+
 ## Pending ADRs (to add as phases progress)
 
-- ADR-15 — Sweep grid resolution (resolved end of Phase 4)
-- ADR-16 — Anomaly injection rate + severity grid (Phase 4)
-- ADR-17 — Drift labeling protocol (Phase 4)
-- ADR-18 — Online retrain batch size + warmup (Phase 7)
-- ADR-19 — Surrogate uncertainty calibration method (Phase 8)
+- ADR-16 — Sweep grid resolution (resolved end of Phase 4 Iter C)
+- ADR-17 — Anomaly injection rate + severity grid (Phase 5)
+- ADR-18 — Drift labeling protocol — *partially captured in `docs/scenarios.md`, formalise after Phase 6*
+- ADR-19 — Online retrain batch size + warmup (Phase 7)
+- ADR-20 — Surrogate uncertainty calibration method (Phase 8)

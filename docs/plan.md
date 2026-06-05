@@ -1,16 +1,20 @@
 # Thesis Plan — Living Document
 
-> Last updated: 2026-06-05 (Phase 4 Iter B done — 4 drift scenarios + 4 anomaly injectors + end-to-end smoke run; 76/76 tests green)
+> Last updated: 2026-06-05 (Phase 4 Iter B done — 4 drift scenarios + 4 anomaly injectors + end-to-end smoke run; 76/76 tests green. ADR-15 added — KPI scope locked to mobility KPIs per TS 28.554 §6.3.1–2.)
 > Owner: Sevda
 > Track: **Simulator-based** custom MATLAB micro-simulator.
 
-## Scope (locked — ADR-14)
+## Scope (locked — ADR-14 + ADR-15)
 
-**5G NR Standalone, intra-RAT, inter-gNB Xn-based handover only.**
+**HO-type axis (ADR-14): 5G NR Standalone, intra-RAT, inter-gNB Xn-based handover only.**
 - In scope: NR ↔ NR handovers between distinct gNBs (TS 38.300 §9.2.3.2, TS 38.331 §5.5.4 A3, §5.3.10 RLF).
 - Out of scope: intra-gNB mobility, N2/AMF-based HO, any inter-RAT handover (NR ↔ LTE), NSA-mode signalling.
 - Normative refs: TS 38.331 v17.16.0, TS 38.133 v17.21.0, TR 38.901 v17.1.0.
 - LTE specs (TS 36.331 / 36.133) are background only (Bangladesh RSRP decoder).
+
+**KPI-family axis (ADR-15): mobility KPIs only per 3GPP TS 28.554 §6.3.1–6.3.2.**
+- In scope: `HOSR`, `HOFR`, `RLF_rate`, `ping_pong_rate` (derived from `events.parquet`); plus the underlying radio measurements `RSRP_serving`, `RSRQ_serving`, `SINR_serving`, `RSRP_neighbor` (from `samples.parquet`) consumed as detector features.
+- Out of scope (TS 28.554 §6.3.6 service-quality KPIs): downlink/uplink throughput, packet drop rate, end-to-end latency, jitter. The simulator has no L2 MAC scheduler / MCS feedback / BLER model; reporting these would over-claim simulator fidelity. Throughput is monotone-correlated with SINR_serving so the detector loses no information.
 
 ## North-star goals
 
@@ -166,13 +170,18 @@
 **Acceptance (Iter A + B):** ✓ Parquet artefacts in `data/simulated/timeline_iter_b/` (540 K samples, 1 908 events); ground-truth drift + anomaly tables align to injected effects; all 4 drift types + all 4 anomaly types observable in raw data; 76/76 unit tests green.
 
 ### Phase 5 — Anomaly benchmark (1 week)
-- [ ] `analysis/anomaly/features.py` — KPI window features (per UE/per cell, sliding window)
-- [ ] Models: IsoForest, LOF, OneClassSVM, Autoencoder, LSTM-AE, Transformer-AE
-- [ ] Temporal split: pre-drift train, post-drift test (key experiment)
-- [ ] Metrics: PR-AUC, ROC-AUC per anomaly type
-- [ ] Plot: model PR-AUC over time (degradation under drift)
+**Feature scope (per ADR-15):** sliding-window aggregates over mobility KPIs only. No throughput/latency/jitter features. Window-feature whitelist:
+- From `samples.parquet`: `RSRP_serving` p10/p50/p90/std, `SINR_serving` p10/p50/p90/std, `RSRQ_serving` p10/p50/p90/std, `RSRP_neighbor_top1` p50, serving-cell-id mode, UE speed.
+- From `events.parquet` aggregated per (UE × window): `HO_ATTEMPT` count, `HO_SUCCESS` count, `HO_FAIL` count, `RLF` count, `PING_PONG` count → derived rates `HOSR`, `HOFR_rate`, `RLF_rate`, `ping_pong_rate`.
 
-**Acceptance:** Table 5.1 (PR-AUC per model per anomaly type) + Figure "drift degradation" ready for thesis chapter 5.
+- [ ] **Iter A (smoke, ~2–3 days):** `analysis/anomaly/features.py` window aggregator (whitelist above) + 2–3 classical detectors (IsoForest, LOF, basic AE) on `timeline_iter_b`. Goals: (a) verify detectors fire on A-1/A-2/A-3/A-5 at all (sanity); (b) verify PR-AUC degrades under drift (the thesis headline hypothesis). De-risks the whole ML track before scaling up.
+- [ ] **Iter B (full benchmark, after Phase 4 Iter C production timelines exist):** expand to IsoForest, LOF, OneClassSVM, Autoencoder, LSTM-AE, Transformer-AE.
+- [ ] Temporal split: pre-drift train, post-drift test (the key experiment).
+- [ ] Metrics: PR-AUC, ROC-AUC per anomaly type (per ADR-15 — no throughput-derived metrics).
+- [ ] Plot: model PR-AUC over time (degradation under drift).
+
+**Acceptance (Iter A):** smoke detector PR-AUC > random on at least 2 of 4 anomaly types; measurable PR-AUC degradation comparing pre-drift vs post-drift test windows. Decides go/no-go for Phase 5 Iter B and Phase 4 Iter C investment.
+**Acceptance (Iter B):** Table 5.1 (PR-AUC per model per anomaly type) + Figure "drift degradation" ready for thesis chapter 5.
 
 ### Phase 6 — Drift benchmark (1 week)
 - [ ] `analysis/drift/detectors.py` — wrappers around ADWIN, DDM, EDDM, KSWIN, Page-Hinkley
@@ -193,7 +202,7 @@
 
 ### Phase 8 — Config–performance surrogate (1 week)
 - [ ] `analysis/config_perf/surrogate.py` — LightGBM, GP, quantile GBM
-- [ ] Targets: HOSR, RLF rate, ping-pong rate
+- [ ] Targets (per ADR-15 — mobility KPIs only): `HOSR`, `HOFR_rate`, `RLF_rate`, `ping_pong_rate`. No throughput targets.
 - [ ] Features: (TTT, hyst, A3 offset, scenario features)
 - [ ] Uncertainty calibration: reliability diagram
 - [ ] Inverse query: optimal config under KPI constraint
