@@ -93,13 +93,14 @@ make gen-timeline-medium   # Phase 4c: regenerate timeline_medium.json via tools
 make anomaly-smoke         # Phase 5 Iter A: IsoForest + LOF + PCA-AE smoke eval on TIMELINE
 make anomaly-benchmark     # Phase 5 Iter B: 5 detectors x bootstrap CI x window sweep x ablation on timeline_medium (~13 min)
 make drift-benchmark       # Phase 6 Iter A: 7 detectors x 6 streams x bootstrap latency CI on timeline_medium (~4.5 min)
+make adaptive-benchmark    # Phase 7 Iter A: 4 retraining strategies (static / periodic / drift-naive / drift-filtered) x PCA-AE base detector x ADWIN trigger on timeline_medium (~1.5 min)
 ```
 
 Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-101 passed           # Python
+150 passed           # Python
 ```
 
 Expected artifacts:
@@ -150,6 +151,13 @@ data/processed/drift_benchmark_timeline_medium/         # Phase 6 Iter A full be
   ├── detection_log.csv                                 #   raw firing events
   ├── drift_detection_heatmap.png                       #   Chapter 6 moneyshot: 2-panel (latency + FPR) heatmap
   └── benchmark_summary.json                            #   config + winning detector + elapsed
+data/processed/adaptive_benchmark_timeline_medium/      # Phase 7 Iter A drift-aware adaptive benchmark:
+  ├── table_7_1_strategy_summary.csv                    #   Table 7.1 (overall + drift-phase PR-AUC + cost-ledger per strategy)
+  ├── sliding_pr_auc.csv                                #   long-form sliding PR-AUC (120 s window / 30 s stride) per strategy
+  ├── retrain_log.csv                                   #   per-fit event log (t_s / reason / pool size / CPU sec)
+  ├── per_window_scores.csv                             #   per-(strategy, window) anomaly score for the appendix
+  ├── adaptive_pr_auc_over_time.png                     #   Chapter 7 moneyshot: 2-panel (4-line PR-AUC vs time + cost-vs-gain bar)
+  └── benchmark_summary.json                            #   config + drift-phase ids + acceptance verdict
 ```
 
 Headline Phase 3 result (vs NordicDat op1/5G-NSA/LTE_B20, see [`docs/calibration_findings.md`](docs/calibration_findings.md)):
@@ -204,8 +212,7 @@ TBD — pick a license before public release. Cite 3GPP TS/TR documents and data
 | 4. Data generation (sweeps + drift + anomaly)   | **Iter A + B + C done** (4 drifts + 4 anomalies; 360-run static sweep for Phase 8; 30-phase production timeline; per-phase UE continuity with Random-Direction model; 88 MATLAB + 101 Python tests green) |
 | 5. Anomaly benchmark                            | **Iter A + B-1 done** (5 detectors × 4 anomaly types × bootstrap 95 % CI × window sweep × per-family ablation on timeline_medium; A-2 PR-AUC = 0.858 [OneClassSVM], A-1 = 0.751 [PCA-AE]; A-3/A-5 documented at noise floor — motivates Phase 7). Iter B-2 (LSTM-AE + A-3 timeline fix) deferred. |
 | 6. Drift benchmark                              | **Iter A done** (7 detectors × 6 streams × bootstrap median-latency CI on timeline_medium; 8/8 drifts detected by all detectors; precision/recall trade-off captured: ADWIN best FPR ≤ 1 %, MMD/Energy-batch best latency 3 s but 18 % FPR; DDM dominates abrupt mobility/reconfig drifts). 38 drift tests green. |
-| 6. Drift benchmark                              | planned                             |
-| 7. Adaptive framework                           | planned                             |
+| 7. Adaptive framework                           | **Iter A done** (4 retraining strategies × PCA-AE base × ADWIN trigger on `timeline_medium`; both C2 + C3 acceptance PASS: drift-triggered-filtered overall PR-AUC = 0.248 vs periodic 0.115, drift-phase 0.187 vs static 0.057 (+0.13, target ≥ +0.10). Headline finding: **naive retraining self-poisons** (periodic/drift-naive ≈ 0.04 drift-phase), **self-supervised bottom-80 % filter recovers and beats static** under drift). 49 adaptive tests green. |
 | 8. Config–performance surrogate                 | planned                             |
 | 9. End-to-end demo                              | planned                             |
 | 10. Writing + reproducibility package           | planned                             |
