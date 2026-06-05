@@ -48,7 +48,7 @@ Schema for `samples.parquet` and `events.parquet` is canonical — see `docs/sch
   - A-2: targeted UE RSRP `std = 0` over the freeze window (flat-line).
   - A-3: targeted cell SINR median dropped 12.9 → 2.3 dB (matches the −10 dB injection).
   - A-5: targeted UE net −9 dB over a 60 s ramp at −0.15 dB/s.
-- `timeline_medium.json` (Iter C production) — **30 phases × 60 s = 1 800 s** real-time-equivalent, **22 baseline phases**, **8 drift phases** (2 of each D-1..D-4), **40 anomaly instances** (10 of each A-1, A-2, A-3, A-5). `carry_over_ues=true` so UE positions persist across phases for realistic per-UE drift trajectories. Generated deterministically by `python -m tools.gen_timeline` (`--rng-seed 42`). This is the primary input for Phase 5 Iter B (PR-AUC + bootstrap CI per anomaly type).
+- `timeline_medium.json` (Iter C production) — **30 phases × 60 s = 1 800 s** real-time-equivalent, **22 baseline phases**, **8 drift phases** (2 of each D-1..D-4), **40 anomaly instances** (10 of each A-1, A-2, A-3, A-5). `carry_over_ues=true` so UE positions persist across phases for realistic per-UE drift trajectories. Generated deterministically by `python -m tools.gen_timeline` (`--rng-seed 42`). This is the primary input for Phase 5 Iter B benchmark — drives `data/processed/anomaly_benchmark_timeline_medium/` (Table 5.1 PR-AUC ± 95 % CI, Table 5.2 window sweep, Table 5.3 ablation, `drift_degradation.png`). The medium timeline produces **898 positive anomaly windows** at W=5 s out of 21 504 total, giving statistical headroom for bootstrap CIs.
 
 ## 4. Phase 4 Iter C: static config-perf sweep
 
