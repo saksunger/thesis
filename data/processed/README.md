@@ -12,4 +12,5 @@ Gitignored. Reproduce via the relevant `make` target.
 | `calibration_ks/`                        | `make calibrate`        | Phase 3 KS-test summary CSV + CDF/Q-Q overlays + sweep heatmaps |
 | `anomaly_smoke_timeline_iter_b/`         | `make anomaly-smoke TIMELINE=timeline_iter_b` | Phase 5 Iter A smoke: per-phase / per-anomaly PR-AUC + FPR tables + 3-panel summary plot |
 | `anomaly_benchmark_timeline_medium/`     | `make anomaly-benchmark`| Phase 5 Iter B full benchmark on `timeline_medium`: Tables 5.1 / 5.2 / 5.3 + `drift_degradation.png` (Chapter 5 moneyshot) + bootstrap-CI long-form CSVs |
+| `drift_benchmark_timeline_medium/`       | `make drift-benchmark`  | Phase 6 Iter A full benchmark on `timeline_medium`: Tables 6.1 / 6.2 / 6.3 + `drift_detection_heatmap.png` (Chapter 6 moneyshot, 2-panel latency × FPR) + per-(drift × detector × stream) latency long-form |
 

@@ -1,6 +1,6 @@
 # Thesis Plan — Living Document
 
-> Last updated: 2026-06-05 (Phase 5 Iter B-1 done — full anomaly-detection benchmark on `timeline_medium`: 5 detectors (IsoForest, LOF, OneClassSVM, PCA-AE, MLP-AE) × 4 anomaly types × bootstrap 95 % CI × window sweep (2/5/10/30 s) × per-feature-family ablation. **88 MATLAB + 63 Python tests green**. A-2 PR-AUC = **0.858 [0.820, 0.897]** (OneClassSVM, best in benchmark), A-1 = 0.751 (PCA-AE). A-3/A-5 documented at noise floor (Iter B-2 / Phase 7 lift). Drift-degradation figure (Chapter 5 moneyshot) shows ≥ 100 % FPR explosion under drift_mobility, directly motivating Phase 7's drift-aware framework.)
+> Last updated: 2026-06-05 (Phase 6 Iter A done — full drift-detection benchmark on `timeline_medium`: 7 detectors (ADWIN, KSWIN, PageHinkley, DDM, EDDM, MMD-batch, Energy-batch) × 6 streams (RSRP/SINR fleet means + HO/HOSR/PP/RLF rolling rates) × bootstrap 95 % CI on median latency. **88 MATLAB + 101 Python tests green** (+38 drift tests). 8/8 drifts detected by all 7 detectors (miss rate = 0). Precision/recall trade-off is the headline: ADWIN best FPR (≤1 %, 13-29 s latency) vs Energy/MMD-batch best latency (3 s, but 18 % FPR). DDM dominates abrupt drifts (D-3 mobility 2 s, D-4 reconfig 3 s). Chapter 6 narrative: "no single best detector — Phase 7 will combine them.")
 > Owner: Sevda
 > Track: **Simulator-based** custom MATLAB micro-simulator.
 
@@ -267,13 +267,68 @@ Scope chosen via hybrid plan (see chat history): the three highest-leverage Iter
 **Acceptance (Iter B-1):** Tables 5.1 / 5.2 / 5.3 + Figure "drift_degradation" delivered. 2/4 anomaly types meet the > 0.5 bar; the other two are documented as structural limits of classical detectors and motivate Iter B-2 / Phase 7. **Conditional PASS** (thesis Chapter 5 has its core tables + figure + interpretation).
 
 ### Phase 6 — Drift benchmark (1 week)
-- [ ] `analysis/drift/detectors.py` — wrappers around ADWIN, DDM, EDDM, KSWIN, Page-Hinkley
-- [ ] MMD + Energy distance batch detectors
-- [ ] Feature streams: RSRP histogram, HOSR rolling, RLF rate rolling
-- [ ] Metrics: detection latency (ground-truth start vs detection), FPR, miss rate
-- [ ] Timeline figure: injected drifts vs detector signals
 
-**Acceptance:** Table 6.1 + Figure ready for thesis chapter 6.
+**Iter A (full benchmark on `timeline_medium`) — DONE:**
+- [x] `analysis/drift/streams.py` — 6 univariate per-second streams (RSRP/SINR fleet means + HO_rate / HOSR / PP_rate / RLF_rate rolling 10 s). UE-speed intentionally excluded (D-3 is *defined* by UE-speed shift; using it would be cheating — interesting question is whether *downstream* KPIs surface D-3).
+- [x] `analysis/drift/labels.py` — per-(stream, t) labels via `affected_kpis` mapping; half-open interval rule matches the simulator's `+drifts.apply_all`.
+- [x] `analysis/drift/detectors.py` — 7 detectors hitting the "5+" bar: ADWIN, KSWIN, PageHinkley (river stream); DDM, EDDM (river binary, with z-score binariser); MMD-batch (RBF + permutation test), Energy-batch (scipy + permutation test). Batch detectors use `step=5` retest cadence to keep wall-clock bounded.
+- [x] `analysis/drift/metrics.py` — detection latency per (drift_instance × detector × stream), miss-rate per (detector × drift_type), baseline FPR per (detector × stream), bootstrap-CI on median latency (consistent with ADR-12).
+- [x] `analysis/drift/benchmark_eval.py` — full Iter A orchestrator. Writes 4 CSVs (per_drift_latency, table_6_1_latency_summary, table_6_2_miss_rate, table_6_3_baseline_fpr) + 1 figure (2-panel heatmap: latency + FPR) + JSON summary to `data/processed/drift_benchmark_timeline_medium/`.
+- [x] `analysis/drift/tests/` — **38 Python tests green** (streams × 9, labels × 7, detectors × 14, metrics × 8). Total Python tests now **101 green**.
+- [x] `make drift-benchmark` runs in ~4.5 min on a single core (~36 s/stream for MMD-batch, sub-second for stream detectors).
+- [x] **Benchmark on `timeline_medium` (1801 1Hz samples × 6 streams × 7 detectors = 42 detector-stream runs, 2 957 firings logged):**
+
+  **Table 6.1 — Median detection latency (s) per (detector × drift_type):**
+  | Detector     | traffic_shift | channel_swap | mobility | reconfig |
+  |---|---|---|---|---|
+  | **ADWIN**       | 29.0 | 23.0 | 19.0 | 13.0 |
+  | **DDM**         | 15.5 | 12.0 | **2.0** | **3.0** |
+  | **EDDM**        | 5.0  | 25.5 | 3.0  | 7.5  |
+  | **Energy-batch**| **3.0**  | **3.0**  | 3.0  | 3.0  |
+  | **KSWIN**       | 24.5 | 51.5 | 20.0 | 20.0 |
+  | **MMD-batch**   | **3.0**  | **3.0**  | 3.0  | 3.0  |
+  | **PageHinkley** | 11.5 | 17.0 | 10.5 | 6.0  |
+
+  **Table 6.2 — Miss rate:** every detector × every drift_type = **0.0** (8/8 drift instances detected by every detector).
+
+  **Table 6.3 — Baseline FPR (false alarms / s) — the precision/recall trade-off:**
+  | Detector | best stream FPR | worst stream FPR | Verdict |
+  |---|---|---|---|
+  | **ADWIN**       | 0.001 (hosr) | **0.010** (sinr) | **Lowest FPR — operational champion** |
+  | **DDM**         | 0.000        | 0.011            | Near-zero FPR, fast on abrupt drift |
+  | **EDDM**        | 0.000        | 0.014            | Low FPR, fast on mobility |
+  | **KSWIN**       | 0.002        | 0.011            | Low FPR but slowest latency |
+  | **PageHinkley** | 0.001        | 0.024            | Balanced |
+  | **Energy-batch**| 0.022        | **0.182** (rsrp) | Fastest but *false-alarm storm* |
+  | **MMD-batch**   | 0.019        | **0.182** (rsrp) | Same trade-off as Energy-batch |
+
+- [x] **Drift-detection heatmap** (`drift_detection_heatmap.png`): 2-panel — Panel A median latency (lower=greener, MMD/Energy darkest), Panel B max baseline FPR across streams (lower=greener, MMD/Energy red at 0.18). The visual trade-off is the Chapter 6 moneyshot.
+
+**Iter A scientific findings (Chapter 6 narrative):**
+- **No single best detector** — choice depends on operating point:
+  - Operational systems (low FPR matters): **ADWIN** (latency 13-29 s, FPR ≤ 1 %)
+  - Abrupt-change focus (D-3, D-4): **DDM** (2-3 s latency on mobility/reconfig)
+  - Early-warning under noise tolerance: **MMD/Energy-batch** (3 s latency, but 18 % FPR)
+- **Indirect detection works**: D-3 (mobility shift) is detected from HO_rate / RLF_rate downstream streams without needing UE-speed itself (UE-speed was intentionally excluded — see streams.py docstring).
+- **D-2 channel swap is the hardest** for stream detectors (KSWIN 51 s, ADWIN 23 s) because the distribution shape change is subtle on per-second fleet means. Batch detectors (MMD/Energy) catch it instantly but pay FPR cost.
+- **Motivates Phase 7** — the optimal adaptive framework will *combine* multiple detectors (e.g. ADWIN for stable FPR + DDM for abrupt mobility) rather than pick one.
+
+**Iter A acceptance check:**
+| Criterion | Target | Actual | Verdict |
+|---|---|---|---|
+| At least 2 detectors detect each drift type with latency < 30 s | ≥ 2 / 4 | 4 / 4 drift types meet the bar with ≥ 4 detectors each | **PASS** |
+| Miss rate < 25 % | < 25 % | 0 % across all detectors / drift types | **PASS** |
+| Baseline FPR < 5 % on best stream | < 5 % | All 7 detectors pass on best stream (max 0.024) | **PASS** |
+| Drift-detection heatmap ready | ✓ | 2-panel (latency + FPR) — `drift_detection_heatmap.png` | **PASS** |
+| Bootstrap CI on median latency | ✓ | All 28 (detector × drift_type) cells | **PASS** |
+
+**Iter A deferred to Iter B (later, only if Phase 7 needs it):**
+- [ ] Per-UE / per-cell streams (current scope is fleet-level only — sufficient for thesis)
+- [ ] Stream-specific detector tuning (e.g. KSWIN window-size sensitivity sweep)
+- [ ] Ensemble drift detector (combine ADWIN low-FPR + DDM low-latency)
+- [ ] Online evaluation harness (current is batch — replay-on-demand for Phase 7 retraining triggers)
+
+**Acceptance (Iter A):** Tables 6.1 / 6.2 / 6.3 + `drift_detection_heatmap.png` delivered. All 5 acceptance criteria PASS. Chapter 6 has its full results matrix + headline figure + scientific narrative. **PASS — Phase 7 unblocked**.
 
 ### Phase 7 — Adaptive framework (1 week)
 - [ ] `analysis/adaptive/online_retrain.py` — River-based incremental retrain on drift trigger

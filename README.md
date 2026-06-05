@@ -92,13 +92,14 @@ make sweep-static          # Phase 4c: 360-run (TTT × hyst × A3 × seed) stati
 make gen-timeline-medium   # Phase 4c: regenerate timeline_medium.json via tools/gen_timeline.py
 make anomaly-smoke         # Phase 5 Iter A: IsoForest + LOF + PCA-AE smoke eval on TIMELINE
 make anomaly-benchmark     # Phase 5 Iter B: 5 detectors x bootstrap CI x window sweep x ablation on timeline_medium (~13 min)
+make drift-benchmark       # Phase 6 Iter A: 7 detectors x 6 streams x bootstrap latency CI on timeline_medium (~4.5 min)
 ```
 
 Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-63 passed            # Python
+101 passed           # Python
 ```
 
 Expected artifacts:
@@ -140,6 +141,14 @@ data/processed/anomaly_benchmark_timeline_medium/       # Phase 5 Iter B full be
   ├── window_sweep_per_anomaly.csv                      #   long-form sweep results
   ├── ablation_winning_detector.csv                     #   long-form ablation (delta PR-AUC vs full)
   ├── drift_degradation.png                             #   Chapter 5 moneyshot: FPR/TPR across phases with drift shading
+  └── benchmark_summary.json                            #   config + winning detector + elapsed
+data/processed/drift_benchmark_timeline_medium/         # Phase 6 Iter A full benchmark:
+  ├── table_6_1_latency_summary.csv                     #   Table 6.1 (median latency [95 % CI] per detector × drift_type)
+  ├── table_6_2_miss_rate.csv                           #   Table 6.2 (miss rate per detector × drift_type)
+  ├── table_6_3_baseline_fpr.csv                        #   Table 6.3 (baseline FPR per detector × stream)
+  ├── per_drift_latency.csv                             #   long-form (drift_instance × detector × stream) latency
+  ├── detection_log.csv                                 #   raw firing events
+  ├── drift_detection_heatmap.png                       #   Chapter 6 moneyshot: 2-panel (latency + FPR) heatmap
   └── benchmark_summary.json                            #   config + winning detector + elapsed
 ```
 
@@ -192,8 +201,9 @@ TBD — pick a license before public release. Cite 3GPP TS/TR documents and data
 | 1.1. Simulator channel core (TR 38.901 UMa)     | **done** (14 unit tests)            |
 | 2. HO mechanism v0 (TS 38.331 A3 + RLF)         | **done** (20 unit tests, sweep ok)  |
 | 3. Calibration vs real data (KS-test)           | **done** (KS ≤ 0.20, see findings)  |
-| 4. Data generation (sweeps + drift + anomaly)   | **Iter A + B + C done** (4 drifts + 4 anomalies; 360-run static sweep for Phase 8; 30-phase production timeline; per-phase UE continuity with Random-Direction model; 88 MATLAB + 63 Python tests green) |
+| 4. Data generation (sweeps + drift + anomaly)   | **Iter A + B + C done** (4 drifts + 4 anomalies; 360-run static sweep for Phase 8; 30-phase production timeline; per-phase UE continuity with Random-Direction model; 88 MATLAB + 101 Python tests green) |
 | 5. Anomaly benchmark                            | **Iter A + B-1 done** (5 detectors × 4 anomaly types × bootstrap 95 % CI × window sweep × per-family ablation on timeline_medium; A-2 PR-AUC = 0.858 [OneClassSVM], A-1 = 0.751 [PCA-AE]; A-3/A-5 documented at noise floor — motivates Phase 7). Iter B-2 (LSTM-AE + A-3 timeline fix) deferred. |
+| 6. Drift benchmark                              | **Iter A done** (7 detectors × 6 streams × bootstrap median-latency CI on timeline_medium; 8/8 drifts detected by all detectors; precision/recall trade-off captured: ADWIN best FPR ≤ 1 %, MMD/Energy-batch best latency 3 s but 18 % FPR; DDM dominates abrupt mobility/reconfig drifts). 38 drift tests green. |
 | 6. Drift benchmark                              | planned                             |
 | 7. Adaptive framework                           | planned                             |
 | 8. Config–performance surrogate                 | planned                             |
