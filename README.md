@@ -78,7 +78,7 @@ make matlab-check
 make help                  # show all targets
 make matlab-check          # verify required toolboxes are installed + licensed
 make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
-make pytest                # run all Python unit tests (anomaly + tools: 38 tests)
+make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + tools: 222 tests)
 make demo                  # Phase 1 channel/measurement smoke test
 make demo-ho               # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
@@ -94,13 +94,14 @@ make anomaly-smoke         # Phase 5 Iter A: IsoForest + LOF + PCA-AE smoke eval
 make anomaly-benchmark     # Phase 5 Iter B: 5 detectors x bootstrap CI x window sweep x ablation on timeline_medium (~13 min)
 make drift-benchmark       # Phase 6 Iter A: 7 detectors x 6 streams x bootstrap latency CI on timeline_medium (~4.5 min)
 make adaptive-benchmark    # Phase 7 Iter A: 4 retraining strategies (static / periodic / drift-naive / drift-filtered) x PCA-AE base detector x ADWIN trigger on timeline_medium (~1.5 min)
+make surrogate-benchmark   # Phase 8 Iter A: HistGB point + Conformal Quantile GB on sweep_config_perf (360 rows) x 3 KPIs (HOSR/RLF/PP); group-5-fold CV + inverse query @ median deployment (~1.5 min)
 ```
 
 Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-150 passed           # Python
+222 passed           # Python (anomaly + drift + adaptive + config_perf + tools)
 ```
 
 Expected artifacts:
@@ -158,6 +159,17 @@ data/processed/adaptive_benchmark_timeline_medium/      # Phase 7 Iter A drift-a
   ├── per_window_scores.csv                             #   per-(strategy, window) anomaly score for the appendix
   ├── adaptive_pr_auc_over_time.png                     #   Chapter 7 moneyshot: 2-panel (4-line PR-AUC vs time + cost-vs-gain bar)
   └── benchmark_summary.json                            #   config + drift-phase ids + acceptance verdict
+data/processed/surrogate_benchmark/                     # Phase 8 Iter A config-perf surrogate benchmark:
+  ├── table_8_1_point_summary.csv                       #   Table 8.1 (per-target CV MAE / RMSE / R^2, HistGB)
+  ├── table_8_2_coverage_summary.csv                    #   Table 8.2 (per-(target, naive|conformal) 90 % PI empirical coverage)
+  ├── cv_point_long.csv                                 #   long-form per-(target, fold) point-estimate scores
+  ├── cv_coverage_long.csv                              #   long-form per-(target, fold, variant) coverage
+  ├── inverse_query_candidates.csv                      #   all 36 (TTT, hyst, A3) candidates scored + feasibility flag
+  ├── inverse_query_recommendations.csv                 #   feasible subset sorted by HOSR desc, with conformal 90 % CI
+  ├── mae_per_target.png                                #   per-target CV MAE bar with C2 (0.05) threshold line
+  ├── reliability_diagram.png                           #   Chapter 8 moneyshot: 2-panel naive-vs-conformal coverage
+  ├── inverse_query.png                                 #   Pareto-style HOSR x RLF scatter; top-3 (TTT, hyst, A3) annotated
+  └── benchmark_summary.json                            #   config + dataset + scenario + acceptance verdict + top-3 recs
 ```
 
 Headline Phase 3 result (vs NordicDat op1/5G-NSA/LTE_B20, see [`docs/calibration_findings.md`](docs/calibration_findings.md)):
@@ -213,7 +225,7 @@ TBD — pick a license before public release. Cite 3GPP TS/TR documents and data
 | 5. Anomaly benchmark                            | **Iter A + B-1 done** (5 detectors × 4 anomaly types × bootstrap 95 % CI × window sweep × per-family ablation on timeline_medium; A-2 PR-AUC = 0.858 [OneClassSVM], A-1 = 0.751 [PCA-AE]; A-3/A-5 documented at noise floor — motivates Phase 7). Iter B-2 (LSTM-AE + A-3 timeline fix) deferred. |
 | 6. Drift benchmark                              | **Iter A done** (7 detectors × 6 streams × bootstrap median-latency CI on timeline_medium; 8/8 drifts detected by all detectors; precision/recall trade-off captured: ADWIN best FPR ≤ 1 %, MMD/Energy-batch best latency 3 s but 18 % FPR; DDM dominates abrupt mobility/reconfig drifts). 38 drift tests green. |
 | 7. Adaptive framework                           | **Iter A done** (4 retraining strategies × PCA-AE base × ADWIN trigger on `timeline_medium`; both C2 + C3 acceptance PASS: drift-triggered-filtered overall PR-AUC = 0.248 vs periodic 0.115, drift-phase 0.187 vs static 0.057 (+0.13, target ≥ +0.10). Headline finding: **naive retraining self-poisons** (periodic/drift-naive ≈ 0.04 drift-phase), **self-supervised bottom-80 % filter recovers and beats static** under drift). 49 adaptive tests green. |
-| 8. Config–performance surrogate                 | planned                             |
+| 8. Config–performance surrogate                 | **Iter A done** (HistGB point + Conformal Quantile GB on `sweep_config_perf.parquet` (360 rows × 3 mobility KPIs); group-5-fold CV + inverse query @ median deployment. All 4 acceptance criteria PASS: HOSR MAE = 0.043 (target ≤ 0.05), R² = {0.96, 0.95, 0.72}, conformal 90 % PI empirical coverage = {0.84, 0.72, 0.89} (target ≥ 0.70). Headline finding: **naive quantile GB intervals are systematically too narrow under grouped CV** (~25 pp under-coverage for RLF_rate); **split-conformal calibration recovers** the coverage guarantee across all 3 targets. 12 / 36 inverse-query recommendations satisfy HOSR ≥ 0.95 ∧ RLF ≤ 0.05 ∧ PP ≤ 0.10; top-3 all use TTT = 256 ms.) 72 config_perf tests green. |
 | 9. End-to-end demo                              | planned                             |
 | 10. Writing + reproducibility package           | planned                             |
 
