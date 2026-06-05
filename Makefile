@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark anomaly drift adaptive surrogate end2end clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -78,7 +78,13 @@ help:
 	@echo "                  x 6 streams (RSRP/SINR fleet means + HO/HOSR/PP/RLF rolling rates)"
 	@echo "                  x bootstrap CI on median latency. Default timeline: timeline_medium (~4.5 min)."
 	@echo ""
-	@echo "Phase 6+ (placeholders):"
+	@echo "Phase 7 (adaptive framework - Iter A implemented):"
+	@echo "  adaptive-benchmark Iter A: 3 retraining strategies (static / periodic-180s / drift-triggered)"
+	@echo "                  x PCA-AE base detector x ADWIN drift trigger on HOSR/RLF streams."
+	@echo "                  Outputs Table 7.1, sliding PR-AUC + cost ledger, 2-panel figure."
+	@echo "                  Default timeline: timeline_medium."
+	@echo ""
+	@echo "Phase 7+ (placeholders):"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
 	@echo "  surrogate       Configuration-performance surrogate"
@@ -100,7 +106,7 @@ test:
 		exit(double(any([r.Failed])))"
 
 pytest:
-	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ tools/tests/ -v
+	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ tools/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
@@ -221,7 +227,17 @@ drift-benchmark:
 	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.drift.benchmark_eval --timeline $(DRIFT_BENCH_TIMELINE)
 
 # ---------------------------------------------------------------------------
-# Phase 6+ targets (placeholders)
+# Phase 7 - Adaptive framework (Iter A landed)
+# ---------------------------------------------------------------------------
+# 3 strategies (static / periodic / drift-triggered) x PCA-AE base detector
+# x ADWIN drift trigger on HOSR/RLF streams. Outputs sliding PR-AUC + cost
+# ledger + 2-panel figure (Chapter 7 moneyshot).
+ADAPTIVE_BENCH_TIMELINE ?= timeline_medium
+adaptive-benchmark:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.adaptive.benchmark_eval --timeline $(ADAPTIVE_BENCH_TIMELINE)
+
+# ---------------------------------------------------------------------------
+# Phase 7+ targets (placeholders)
 # ---------------------------------------------------------------------------
 
 anomaly:
