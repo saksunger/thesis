@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo anomaly drift adaptive surrogate end2end clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -89,7 +89,14 @@ help:
 	@echo "                  (HOSR/RLF_rate/ping_pong_rate) on sweep_config_perf.parquet (360 rows)."
 	@echo "                  Grouped 5-fold CV + inverse query @ median deployment. ~30 s wall clock."
 	@echo ""
-	@echo "Phase 8+ (placeholders):"
+	@echo "Phase 9 (end-to-end demo - Iter A implemented):"
+	@echo "  end2end-demo    Iter A: full pipeline replay - drift detect -> filtered retrain ->"
+	@echo "                  surrogate query -> counterfactual KPI uplift. PCA-AE + ADWIN + HistGB +"
+	@echo "                  ConformalQuantileGB on timeline_medium. Outputs intervention_log.csv +"
+	@echo "                  4-panel end_to_end_moneyshot.png (thesis defense plate)."
+	@echo "                  Default timeline: timeline_medium."
+	@echo ""
+	@echo "Phase 9+ (placeholders):"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
 	@echo "  surrogate       Configuration-performance surrogate"
@@ -111,7 +118,7 @@ test:
 		exit(double(any([r.Failed])))"
 
 pytest:
-	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ analysis/config_perf/tests/ tools/tests/ -v
+	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ analysis/config_perf/tests/ analysis/demo/tests/ tools/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
@@ -252,7 +259,19 @@ surrogate-benchmark:
 	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.config_perf.benchmark_eval
 
 # ---------------------------------------------------------------------------
-# Phase 8+ targets (placeholders)
+# Phase 9 - End-to-end drift-aware adaptive demo (Iter A landed)
+# ---------------------------------------------------------------------------
+# Combines Phase 6 drift detection (ADWIN), Phase 7 filtered retraining
+# (PCA-AE + bottom-q filter), and Phase 8 surrogate query (HistGB +
+# ConformalQuantileGB) into a single walk-forward replay on
+# `timeline_medium`. Emits intervention_log + per_window + retrain_log
+# CSVs + 4-panel end_to_end_moneyshot.png (the thesis defense plate).
+DEMO_TIMELINE ?= timeline_medium
+end2end-demo:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.demo.run_demo --timeline $(DEMO_TIMELINE)
+
+# ---------------------------------------------------------------------------
+# Phase 9+ targets (placeholders)
 # ---------------------------------------------------------------------------
 
 anomaly:
