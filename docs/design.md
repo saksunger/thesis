@@ -169,10 +169,70 @@ Both written via `parquet.write` from MATLAB Communications Toolbox / `parquetwr
 
 ---
 
+## ADR-12 — Calibration metric: KS-statistic + bootstrap CI, not p-value
+*2026-06-05 · accepted (Phase 3 v0)*
+
+**Context.** Two-sample Kolmogorov-Smirnov test (`scipy.stats.ks_2samp`) is the standard nonparametric goodness-of-fit metric for matching simulated to empirical KPI distributions. With `n_sim ≈ 144 k` and `n_real ≈ 43 k`, the asymptotic p-value of any non-zero KS-statistic underflows to 0 — making p-value a useless yardstick at this scale.
+
+**Decision.**
+1. Report **KS-statistic** as the primary calibration metric.
+2. Report a **95 % bootstrap confidence interval** on the KS-statistic itself (200 paired resamples of sim and real arrays, each capped at 10 000 samples for cost control).
+3. Report **Δp50 (sim median − real median)** as the physically-interpretable companion.
+4. Do **not** report or interpret p-values at this sample size. They are computed only for completeness in the summary CSV.
+5. Calibration claims are restricted to the **matched (RAN, band, operator) segment** — i.e. our 5G-NSA / 3.5 GHz simulator vs NordicDat op1/5G-NSA/LTE_B20. Cross-band / cross-RAN comparisons are reported for context only.
+
+**Consequences.**
+- (+) Defensible reporting at thesis review (Massey 1951 §3, Conover 1999 §6.3).
+- (+) KS-statistic + bootstrap CI is reproducible and gives a clean acceptance threshold (e.g. KS < 0.20 for v0).
+- (−) Cannot make "the distributions are statistically identical" claims. Mitigation: we never need that claim — the simulator is independent training data for ML; calibration only proves it samples a *compatible* distribution.
+
+---
+
+## ADR-13 — RSRQ residual mismatch deferred to Phase 4 traffic-load model
+*2026-06-05 · accepted (Phase 3 v0)*
+
+**Context.** In the 3 × 3 calibration sweep, RSRQ KS-statistic is constant at 0.467 across all (ISD, area) combinations — meaning the mismatch is insensitive to channel parameters. RSRP and SINR fits (KS ≤ 0.20) are tight against the same target segment. Inspection of the CDF shows the sim RSRQ is concentrated in `[−14, −10] dB` while real spans `[−20, −7] dB`. The Phase 3 simulator uses a deterministic load assumption (fixed PRB allocation, no neighbour-cell interference variability).
+
+**Decision.** Accept the RSRQ residual mismatch as a known limitation of Phase 3. Document it openly in `docs/calibration_findings.md` §4 and the thesis chapter. Defer the fix to **Phase 4**, where we will add a stochastic traffic-load model so that neighbour-cell RSSI (and therefore the denominator of RSRQ) becomes stochastic.
+
+**Consequences.**
+- (+) Phase 3 ships on schedule with honest scope statement; reviewers can verify the gap is logical, not a bug.
+- (+) Provides a concrete Phase 4 ML hook (load model is the natural place for traffic-shift drift scenario).
+- (−) RSRQ-based detectors in Phase 5 will look optimistic on simulated data until Phase 4 lands. Mitigation: report Phase 5 detectors on Phase 4 timelines, not Phase 3 calibration data.
+
+---
+
+## ADR-14 — Scope: 5G intra-RAT inter-gNB Xn handover only
+*2026-06-05 · accepted (supersedes implicit multi-RAT framing in Phase 0)*
+
+**Context.** Through Phases 0–3 the simulator and documentation occasionally implied a multi-RAT scope (LTE comparisons, `ran_type` enum including `LTE`, Bangladesh dataset treated as a calibration source). The thesis statement, however, is bounded to **5G intra-RAT inter-gNB handover** (3GPP NR Standalone, Xn-based mobility per TS 38.300 §9.2.3 + TS 38.331 §5.5.4). Keeping the wider framing in the methodology section would inflate scope claims that the implementation does not actually back.
+
+**Decision.** Lock the entire thesis pipeline to:
+
+1. **Radio access:** 5G NR Standalone (`ran_type = "NR_SA"`), no NSA (LTE-anchored) signalling.
+2. **HO type:** intra-RAT (NR ↔ NR only) and inter-gNB (each cell in the 7-hex layout is a distinct gNB; Xn-based HO per TS 38.300 §9.2.3.2). Intra-gNB intra-DU mobility, N2-based HO via 5GC, and any inter-RAT (NR ↔ LTE) handover are **out of scope**.
+3. **3GPP normative references:** TS 38.331 v17.16.0 (RRC, A3, RLF), TS 38.133 v17.21.0 (RRM measurements), TR 38.901 v17.1.0 (channel). LTE specs (TS 36.331, TS 36.133) are demoted to **background only** — used solely to decode the Bangladesh dataset's encoded RSRP/RSRQ columns, and not as design references.
+4. **Real-data calibration role:** NordicDat's `op1/5G-NSA/LTE_B20` segment is the closest publicly available 5G-flavored radio reference and is used for **radio-layer marginal distribution calibration only** (serving-cell RSRP/RSRQ/SINR shape). The HO control plane (A3 event timing, TTT, RLF state machine) is **not** calibrated against real HO event logs because no public 5G SA HO event dataset exists; it is implemented directly from the 3GPP spec and verified by unit tests (`simulator/tests/`).
+5. **Bangladesh dataset:** **excluded from the calibration scope** of this track. It is LTE intra-RAT inter-eNB (the LTE analog of our scope), and is retained only as a *qualitative order-of-magnitude reference* for HO event rate sanity in the thesis chapter ("real LTE drive tests see ~310 HO attempts/hour" as context, not as a calibration target).
+
+**Consequences.**
+- (+) Clean, defensible scope statement for the thesis abstract and methodology chapter — every claim maps to an implemented artifact.
+- (+) Removes the temptation to over-claim "calibrated against Bangladesh LTE" when the spec being implemented is NR.
+- (+) Justifies why we do not pursue inter-RAT drift scenarios in Phase 4 (D-2's `UMa → UMi` swap stays in scope because both are 5G channel models per TR 38.901).
+- (−) Loses the ability to cite Bangladesh's HOSR/HOFR figures as calibration metrics. Mitigation: those figures live in the thesis "Related Work / Real-network context" subsection only.
+- (−) Reviewer may ask why we didn't use a 5G SA dataset. Mitigation: we explicitly survey the public dataset landscape in chapter 2 and document the absence of public 5G SA HO event logs.
+
+**Code-level enforcement.**
+- Simulator metadata default `ran_type = "NR_SA"` (writers + calibration runner). 
+- Schema enum `ran_type ∈ {LTE, NR_SA, NR_NSA}`: sim emits only `NR_SA`; the `LTE` and `NR_NSA` values exist only to label real-data rows when they appear in the calibration pipeline for diagnostic comparison.
+- Phase 4 drift catalog (`docs/scenarios.md`) reviewed — no inter-RAT scenario; D-2 (UMa ↔ UMi) is intra-NR.
+
+---
+
 ## Pending ADRs (to add as phases progress)
 
-- ADR-12 — Sweep grid resolution (resolved end of Phase 4)
-- ADR-13 — Anomaly injection rate + severity grid (Phase 4)
-- ADR-14 — Drift labeling protocol (Phase 4)
-- ADR-15 — Online retrain batch size + warmup (Phase 7)
-- ADR-16 — Surrogate uncertainty calibration method (Phase 8)
+- ADR-15 — Sweep grid resolution (resolved end of Phase 4)
+- ADR-16 — Anomaly injection rate + severity grid (Phase 4)
+- ADR-17 — Drift labeling protocol (Phase 4)
+- ADR-18 — Online retrain batch size + warmup (Phase 7)
+- ADR-19 — Surrogate uncertainty calibration method (Phase 8)

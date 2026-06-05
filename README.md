@@ -2,13 +2,15 @@
 
 Master's thesis — Wrocław University of Science and Technology, Department of Computer Engineering.
 
+> **Scope (ADR-14):** 5G NR Standalone, intra-RAT, inter-gNB Xn handover only (TS 38.300 §9.2.3.2, TS 38.331 §5.5.4 + §5.3.10). NSA, intra-gNB, N2-based, and inter-RAT HO are out of scope. See `docs/design.md` ADR-14 for the binding scope statement.
+
 ## TL;DR
 
-1. A custom MATLAB micro-simulator implements the 3GPP NR HO procedure (TS 38.331 §5.5.4 A3 event, §5.3.10 RLF/T310, TR 38.901 channel model).
+1. A custom MATLAB micro-simulator implements the 3GPP NR HO procedure (TS 38.331 §5.5.4 A3 event, §5.3.10 RLF/T310, TR 38.901 channel model) for **inter-gNB Xn handover in 5G SA only**.
 2. Parameter sweeps over (TTT, hysteresis, A3 offset) produce a controlled (config → KPI) dataset.
-3. Drift scenarios (channel-model swap, traffic shift, mobility-profile change) and anomaly injections (RLF bursts, measurement glitches, slow degradation) are scripted with ground-truth labels.
+3. Drift scenarios (intra-NR channel-model swap UMa↔UMi, traffic shift, mobility-profile change) and anomaly injections (RLF bursts, measurement glitches, slow degradation) are scripted with ground-truth labels.
 4. ML benchmarks: anomaly detection (IsoForest, LOF, AE, LSTM-AE, Transformer-AE), drift detection (ADWIN, DDM, KSWIN, PH, MMD), drift-aware adaptive retraining, calibrated config–performance surrogate.
-5. Sanity check: simulator output is compared against real-world Bangladesh and NordicDat distributions (KS test).
+5. Calibration: simulator radio-layer marginal distributions (RSRP/RSRQ/SINR) are KS-tested against the NordicDat `op1/5G-NSA/LTE_B20` segment — the closest publicly available 5G-flavored real measurement set. The HO control plane is verified against the 3GPP spec via unit tests, not against real HO event logs (no public 5G SA HO event dataset exists).
 
 See [`docs/plan.md`](docs/plan.md) for the full phased plan, [`docs/design.md`](docs/design.md) for architecture decisions, [`docs/schema.md`](docs/schema.md) for the KPI dictionary.
 
@@ -69,42 +71,66 @@ export MATLAB_DIR=/opt/matlab/R2024a/bin
 make matlab-check
 ```
 
-### Phase 0–2 targets (currently usable)
+### Phase 0–4a targets (currently usable)
 
 ```bash
 make help            # show all targets
 make matlab-check    # verify required toolboxes are installed + licensed
-make test            # run all MATLAB unit tests (Phase 1 + 2: 34 tests)
+make test            # run all MATLAB unit tests (Phases 1–4a: 56 tests)
 make demo            # Phase 1 channel/measurement smoke test
 make demo-ho         # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt       # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
+make eda             # Phase 3 EDA report (Bangladesh + NordicDat)
+make calibrate-sim   # Phase 3 calibration scenario (12 UE × 120 s → parquet, ~6 s)
+make calibrate-sweep # Phase 3 3×3 (ISD × area) tuning sweep + heatmap (~30 s)
+make calibrate       # Phase 3 end-to-end: sim run → KS-test → summary CSV + plots
+make sim             # Phase 4b timeline build (TIMELINE=timeline_iter_b, ~70 s, 4 drifts + 4 anomalies)
+                     #   or: make sim TIMELINE=timeline_short  for a 3-phase smoke build
 ```
 
 Expected output of `make test`:
 
 ```
-=== 34/34 PASS ===
+=== 56/56 PASS ===
 ```
 
 Expected artifacts:
 
 ```
-data/simulated/phase1_demo/phase1_layout.png    # 7-cell hex + UE trajectory
-data/simulated/phase1_demo/phase1_kpis.png      # RSRP / RSRQ / SINR vs time
-data/simulated/phase2_demo/phase2_serving.png   # serving cell + HO events over time
-data/simulated/phase2_demo/phase2_l3rsrp.png    # L3-filtered RSRP per cell
-data/simulated/phase2_sweep/sweep_ho_attempt.png  # heatmap: TTT × hyst → HO count
-data/simulated/phase2_sweep/sweep_ping_pong.png   # heatmap: TTT × hyst → pp rate
-data/simulated/phase2_sweep/sweep_results.mat     # raw tensors for analysis
+data/simulated/phase1_demo/phase1_layout.png         # 7-cell hex + UE trajectory
+data/simulated/phase1_demo/phase1_kpis.png           # RSRP / RSRQ / SINR vs time
+data/simulated/phase2_demo/phase2_serving.png        # serving cell + HO events over time
+data/simulated/phase2_demo/phase2_l3rsrp.png         # L3-filtered RSRP per cell
+data/simulated/phase2_sweep/sweep_ho_attempt.png     # heatmap: TTT × hyst → HO count
+data/simulated/phase2_sweep/sweep_ping_pong.png      # heatmap: TTT × hyst → pp rate
+data/simulated/phase2_sweep/sweep_results.mat        # raw tensors for analysis
+data/simulated/calibration_final/kpis_ue*.parquet    # 144k-row sim sample for KS-test
+data/simulated/calibration_final/events_ue*.parquet  # HO/RLF event log per UE
+data/processed/calibration_eda/                      # Phase 3 EDA figures
+data/processed/calibration_ks/ks_summary_final.csv   # ← reported KS-stats
+data/processed/calibration_ks/cdf_final.png          # CDF overlay (sim vs 3 segments)
+data/processed/calibration_ks/qq_final.png           # Q-Q grid (sim vs 3 segments)
+data/processed/calibration_ks/sweep_heatmap_*.png    # ISD × area calibration heatmap
+data/simulated/timeline_iter_b/samples.parquet          # Phase 4b: per-tick KPI feed (~32 MB, 540 K rows)
+data/simulated/timeline_iter_b/events.parquet           # Phase 4b: HO/RLF/PING_PONG events (~1 908 rows)
+data/simulated/timeline_iter_b/ground_truth_drift.parquet    # Phase 4b: 4 injected drift labels (D-1..D-4)
+data/simulated/timeline_iter_b/ground_truth_anomaly.parquet  # Phase 4b: 4 injected anomaly labels (A-1, A-2, A-3, A-5)
+data/simulated/timeline_iter_b/run_metadata.json        # timeline source, seed, git SHA
 ```
 
-### Phase 3+ targets (placeholders)
+Headline Phase 3 result (vs NordicDat op1/5G-NSA/LTE_B20, see [`docs/calibration_findings.md`](docs/calibration_findings.md)):
+
+| KPI  | KS-stat | 95 % CI         | Δ median |
+|------|---------|------------------|----------|
+| RSRP | 0.175   | [0.164, 0.186]   | +3.1 dB  |
+| SINR | 0.192   | [0.183, 0.200]   | −2.2 dB  |
+| RSRQ | 0.467   | [0.458, 0.478]   | −0.5 dB (residual; load model deferred to Phase 4) |
+
+### Phase 5+ targets (placeholders)
 
 Will be wired up as we implement the corresponding analysis pipelines.
 
 ```bash
-make sim         # run simulator timeline (TIMELINE=<name>)
-make calibrate   # KS-test simulator vs real datasets        ← Phase 3 (next)
 make anomaly     # anomaly detection benchmark
 make drift       # drift detection benchmark
 make adaptive    # drift-aware adaptive framework
@@ -113,21 +139,21 @@ make end2end     # end-to-end timeline demo
 make all         # everything end-to-end
 ```
 
-### Python venv (analysis side, set up before Phase 3)
+### Python venv (analysis side)
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt   # added in Phase 3
+pip install -r requirements.txt
 ```
 
-## Real public datasets used for sanity check
+## Real public datasets
 
-| Dataset    | Local path (gitignored)             | Size  | Role in this track                                                       |
-|------------|-------------------------------------|-------|--------------------------------------------------------------------------|
-| Bangladesh | `data/raw_public/bangladesh/`       | 535 MB| HO success/fail rate sanity, RSRP / CINR distribution shape (LTE)        |
-| NordicDat  | `data/raw_public/nordicdat/`        | 14 MB | RSRP / RSRQ / SINR distribution KS-test (LTE + 5G-NSA), 65-day time span |
+| Dataset    | Local path (gitignored)             | Size  | Role in this track (per ADR-14)                                                                 |
+|------------|-------------------------------------|-------|--------------------------------------------------------------------------------------------------|
+| NordicDat  | `data/raw_public/nordicdat/`        | 14 MB | **In scope.** Segment `op1/5G-NSA/LTE_B20` is the primary calibration target for RSRP/RSRQ/SINR. |
+| Bangladesh | `data/raw_public/bangladesh/`       | 535 MB| **Out of scope** for calibration (LTE, not NR SA). Retained as order-of-magnitude HO-rate context only. |
 
-Datasets are **not** used as training data on this track. They are external references for simulator calibration only. See `data/raw_public/README.md` for repopulation instructions on a fresh clone.
+Datasets are **never** mixed with simulated samples on this track — calibration is one-way KS-comparison of marginal distributions. See `data/raw_public/README.md` for repopulation instructions on a fresh clone.
 
 ## License & citation
 
@@ -140,8 +166,8 @@ TBD — pick a license before public release. Cite 3GPP TS/TR documents and data
 | 0. Foundation (repo, docs, Makefile, datasets)  | **done**                            |
 | 1.1. Simulator channel core (TR 38.901 UMa)     | **done** (14 unit tests)            |
 | 2. HO mechanism v0 (TS 38.331 A3 + RLF)         | **done** (20 unit tests, sweep ok)  |
-| 3. Calibration vs real data (KS-test)           | next                                |
-| 4. Data generation (sweeps + drift + anomaly)   | planned                             |
+| 3. Calibration vs real data (KS-test)           | **done** (KS ≤ 0.20, see findings)  |
+| 4. Data generation (sweeps + drift + anomaly)   | **Iter A + B done** (4 drift types + 4 anomaly injectors end-to-end; 76/76 tests green); Iter C (production timelines + static sweep) next |
 | 5. Anomaly benchmark                            | planned                             |
 | 6. Drift benchmark                              | planned                             |
 | 7. Adaptive framework                           | planned                             |

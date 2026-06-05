@@ -1,0 +1,119 @@
+{
+  "timeline_id":  "timeline_iter_b",
+  "description":  "Iter B coverage timeline: baseline -> all 4 drifts (D-1..D-4) interleaved with all 4 anomaly types (A-1, A-2, A-3, A-5). One ground-truth label per injected phenomenon.",
+  "scope_note":   "Per ADR-14: 5G NR SA, intra-RAT, inter-gNB Xn HO only. All drifts and anomalies stay inside the NR data plane.",
+  "global": {
+    "master_seed":        42,
+    "n_ue":               12,
+    "area_m":             1500,
+    "default_duration_s": 60
+  },
+  "phases": [
+    {
+      "phase_id":    1,
+      "scenario":    "baseline",
+      "params":      {}
+    },
+    {
+      "phase_id":    2,
+      "scenario":    "drift_traffic_shift",
+      "params":      { "n_ue": 30 }
+    },
+    {
+      "phase_id":    3,
+      "scenario":    "drift_mobility",
+      "params":      { "speed_mps": 25 }
+    },
+    {
+      "phase_id":    4,
+      "scenario":    "drift_channel_swap",
+      "params":      {}
+    },
+    {
+      "phase_id":    5,
+      "scenario":    "drift_reconfig",
+      "params":      { "ho_params": { "ttt_s": 1.024, "hyst_db": 4 } }
+    },
+    {
+      "phase_id":    6,
+      "scenario":    "baseline",
+      "params":      {}
+    }
+  ],
+  "ground_truth_drift": [
+    {
+      "drift_id":            "D-1",
+      "phase_id_start":      2,
+      "phase_id_end":        2,
+      "affected_kpis":       ["event_rate", "ping_pong_rate"],
+      "expected_direction":  "up",
+      "note":                "Traffic load shift via UE-density bump (12 -> 30). Expected higher HO rate."
+    },
+    {
+      "drift_id":            "D-3",
+      "phase_id_start":      3,
+      "phase_id_end":        3,
+      "affected_kpis":       ["ho_rate", "dwell_time_s"],
+      "expected_direction":  "shape",
+      "note":                "Mobility shift 10 m/s -> 25 m/s. Expected cell-boundary crossing rate up, serving dwell down."
+    },
+    {
+      "drift_id":            "D-2",
+      "phase_id_start":      4,
+      "phase_id_end":        4,
+      "affected_kpis":       ["rsrp_serving_dbm", "sinr_serving_db", "rsrq_serving_db"],
+      "expected_direction":  "shape",
+      "note":                "Channel swap UMa -> UMi-Street Canyon. Distribution shift expected."
+    },
+    {
+      "drift_id":            "D-4",
+      "phase_id_start":      5,
+      "phase_id_end":        5,
+      "affected_kpis":       ["hosr", "ping_pong_rate"],
+      "expected_direction":  "shape",
+      "note":                "Operator pushes new RRM config: TTT 256ms -> 1024ms, hyst 2dB -> 4dB. Expected lower ping-pong, possibly slower RLF reaction."
+    }
+  ],
+  "ground_truth_anomaly": [
+    {
+      "anomaly_id":         "A-1",
+      "type":               "rlf_burst",
+      "phase_id":           1,
+      "t_start_s":          25,
+      "t_end_s":            35,
+      "affected_ue_ids":    [1, 2, 3],
+      "delta_db":           -18,
+      "note":               "Transient SINR collapse on 3 UEs for 10s. Should produce RLF events."
+    },
+    {
+      "anomaly_id":         "A-2",
+      "type":               "meas_glitch",
+      "phase_id":           1,
+      "t_start_s":          40,
+      "t_end_s":            50,
+      "affected_ue_ids":    [5],
+      "stuck_value_dbm":    -95,
+      "note":               "Stuck-at -95 dBm RSRP for one UE for 10s. Should appear as flat-line in samples."
+    },
+    {
+      "anomaly_id":         "A-3",
+      "type":               "interference_spike",
+      "phase_id":           6,
+      "t_start_s":          10,
+      "t_end_s":            30,
+      "affected_cell_ids":  [1],
+      "delta_db":           -10,
+      "note":               "Single-cell interference spike: cell 1 SINR drops 10 dB for 20s, viewable by all UEs."
+    },
+    {
+      "anomaly_id":         "A-5",
+      "type":               "slow_degrade",
+      "phase_id":           6,
+      "t_start_s":          0,
+      "t_end_s":            60,
+      "affected_ue_ids":    [7],
+      "rate_db_per_s":      -0.15,
+      "note":               "Linear SINR ramp -0.15 dB/s over the full phase on UE 7 = 9 dB total degrade. Mimics antenna damage."
+    }
+  ]
+}

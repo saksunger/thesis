@@ -27,23 +27,40 @@ DATA_PROC     := data/processed
 FIG_DEMO_DIR  := $(DATA_SIM)/phase1_demo
 FIG_HO_DIR    := $(DATA_SIM)/phase2_demo
 FIG_SWEEP_DIR := $(DATA_SIM)/phase2_sweep
+CALIB_FINAL   := $(DATA_SIM)/calibration_final
+CALIB_SWEEP   := $(DATA_SIM)/calibration_sweep
+CALIB_OUT     := $(DATA_PROC)/calibration_ks
+TIMELINE_DIR  := simulator/+scenarios/timelines
 
-# Default timeline (Phase 4+); override with: make sim TIMELINE=timeline_medium
+# Calibration scenario knobs (override on the command line if needed)
+CALIB_N_UE      ?= 12
+CALIB_T_TOTAL_S ?= 120
+CALIB_ISD_M     ?= 500
+CALIB_AREA_M    ?= 1500
+CALIB_SEED      ?= 999
+
+# Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test demo demo-ho sweep-ttt sim calibrate anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test demo demo-ho sweep-ttt eda calibrate-sim calibrate-sweep calibrate sim anomaly drift adaptive surrogate end2end clean
 
 help:
-	@echo "Phase 0–2 (implemented):"
+	@echo "Phase 0–3 (implemented):"
 	@echo "  matlab-check    Verify MATLAB toolboxes are installed and licensed"
 	@echo "  test            Run all MATLAB unit tests (simulator/tests/)"
 	@echo "  demo            Run Phase 1 channel/measurement smoke test"
 	@echo "  demo-ho         Run Phase 2 HO event-loop smoke test (single UE)"
 	@echo "  sweep-ttt       Run Phase 2 small TTT × hysteresis sanity sweep"
+	@echo "  eda             Generate Phase 3 EDA report (Bangladesh + NordicDat)"
+	@echo "  calibrate-sim   Run calibration scenario (12 UEs × 120 s → parquet)"
+	@echo "  calibrate-sweep Run 3×3 (ISD × area) tuning sweep"
+	@echo "  calibrate       KS-test simulator vs NordicDat top-3 segments"
 	@echo ""
-	@echo "Phase 3+ (placeholders):"
-	@echo "  sim             Run simulator timeline (TIMELINE=$(TIMELINE))"
-	@echo "  calibrate       KS-test simulator vs real datasets"
+	@echo "Phase 4 (timeline data generation — Iter B: 4 drifts + 4 anomaly types):"
+	@echo "  sim             Build timeline (TIMELINE=$(TIMELINE) -> $(TIMELINE_DIR)/$$TIMELINE.json)"
+	@echo "                  Available timelines: timeline_short (3-phase smoke), timeline_iter_b (6-phase full coverage)"
+	@echo ""
+	@echo "Phase 5+ (placeholders):"
 	@echo "  anomaly         Anomaly detection benchmark"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
@@ -84,18 +101,57 @@ sweep-ttt:
 	@ls -lh $(FIG_SWEEP_DIR)
 
 # ---------------------------------------------------------------------------
-# Phase 4+ targets (placeholders, to be implemented as we progress)
+# Phase 3 calibration pipeline
+# ---------------------------------------------------------------------------
+eda:
+	$(PYTHON) -m analysis.calibration.eda_report
+	@ls -lh $(DATA_PROC)/calibration_eda
+
+calibrate-sim:
+	@mkdir -p $(CALIB_FINAL)
+	@rm -f $(CALIB_FINAL)/kpis_ue*.parquet $(CALIB_FINAL)/events_ue*.parquet
+	$(MATLAB) $(MATLAB_FLAGS) "addpath(genpath('simulator')); \
+		calibration_run('$(CALIB_FINAL)', struct( \
+			'n_ue', $(CALIB_N_UE), \
+			't_total_s', $(CALIB_T_TOTAL_S), \
+			'isd_m', $(CALIB_ISD_M), \
+			'area_m', $(CALIB_AREA_M), \
+			'master_seed', $(CALIB_SEED)))"
+	@echo "Sim parquet in $(CALIB_FINAL):"
+	@ls -lh $(CALIB_FINAL) | head -20
+
+calibrate-sweep:
+	@mkdir -p $(CALIB_SWEEP)
+	$(MATLAB) $(MATLAB_FLAGS) "addpath(genpath('simulator')); \
+		calibration_sweep('$(CALIB_SWEEP)')"
+	# `--segment 1/5G-NSA/LTE_B20` is the NordicDat segment identifier
+	# (operator_id / ran / band as printed in the raw CSV). It is the
+	# closest 5G-flavored real reference for our NR_SA simulator and is
+	# locked as the primary calibration target by ADR-14.
+	$(PYTHON) -m analysis.calibration.ks_sweep_compare \
+		--root $(CALIB_SWEEP) \
+		--kpi rsrp_serving_dbm \
+		--segment 1/5G-NSA/LTE_B20
+
+calibrate: calibrate-sim
+	$(PYTHON) -m analysis.calibration.ks_test \
+		--sim $(CALIB_FINAL) --label final
+	@echo "Calibration artifacts in $(CALIB_OUT):"
+	@ls -lh $(CALIB_OUT)
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Timeline data generation (Iter B: 4 drifts + 4 anomaly injectors)
 # ---------------------------------------------------------------------------
 sim:
 	@mkdir -p $(DATA_SIM)/$(TIMELINE)
 	$(MATLAB) $(MATLAB_FLAGS) "addpath(genpath('simulator')); \
-		runners.run_timeline('simulator/+scenarios/timelines/$(TIMELINE).yml','$(DATA_SIM)/$(TIMELINE)')"
+		build_timeline('$(TIMELINE_DIR)/$(TIMELINE).json','$(DATA_SIM)/$(TIMELINE)')"
+	@echo "Timeline parquet + ground truth in $(DATA_SIM)/$(TIMELINE):"
+	@ls -lh $(DATA_SIM)/$(TIMELINE)
 
-calibrate:
-	$(PYTHON) -m analysis.calibration.run \
-		--sim $(DATA_SIM)/$(TIMELINE) \
-		--bangladesh $(DATA_RAW)/bangladesh \
-		--nordicdat  $(DATA_RAW)/nordicdat
+# ---------------------------------------------------------------------------
+# Phase 5+ targets (placeholders, to be implemented as we progress)
+# ---------------------------------------------------------------------------
 
 anomaly:
 	$(PYTHON) -m analysis.anomaly.run --data $(DATA_SIM)/$(TIMELINE)

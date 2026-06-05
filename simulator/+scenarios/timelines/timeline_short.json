@@ -1,0 +1,38 @@
+{
+  "timeline_id":  "timeline_short",
+  "description":  "3-phase smoke timeline: baseline -> channel-swap drift -> post-drift recovery.",
+  "scope_note":   "Per ADR-14: 5G NR SA, intra-RAT, inter-gNB Xn HO only. UMa <-> UMi swap stays inside TR 38.901 (intra-NR).",
+  "global": {
+    "master_seed":   42,
+    "n_ue":          12,
+    "area_m":        1500,
+    "default_duration_s": 60
+  },
+  "phases": [
+    {
+      "phase_id":    1,
+      "scenario":    "baseline",
+      "params":      {}
+    },
+    {
+      "phase_id":    2,
+      "scenario":    "drift_channel_swap",
+      "params":      {}
+    },
+    {
+      "phase_id":    3,
+      "scenario":    "drift_channel_swap",
+      "params":      {}
+    }
+  ],
+  "ground_truth_drift": [
+    {
+      "drift_id":            "D-2",
+      "phase_id_start":      2,
+      "phase_id_end":        3,
+      "affected_kpis":       ["rsrp_serving_dbm", "sinr_serving_db", "rsrq_serving_db"],
+      "expected_direction":  "shape",
+      "note":                "UMa -> UMi channel swap. Distribution shift in RSRP+SINR expected from t at phase boundary 1->2."
+    }
+  ]
+}

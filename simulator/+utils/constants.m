@@ -45,16 +45,24 @@ c.default_ue_speed_mps = 5;                % default mobility speed (≈ 18 km/h
 c.default_isd_m        = 500;              % macro UMa ISD per TR 38.913
 c.default_scenario     = "UMa";            % "UMa" | "UMi"
 
-% --- TR 38.901 channel-model parameters (UMa) ---
-% Path-loss shadowing std (Table 7.4.1-1, UMa)
-c.sigma_los_db         = 4;                % LoS shadow std
-c.sigma_nlos_db        = 6;                % NLoS shadow std
+% --- TR 38.901 channel-model parameters ---
+% Path-loss shadowing std (Table 7.4.1-1)
+c.sigma_los_db_uma     = 4;                % UMa LoS shadow std
+c.sigma_nlos_db_uma    = 6;                % UMa NLoS shadow std
+c.sigma_los_db_umi     = 4;                % UMi LoS shadow std
+c.sigma_nlos_db_umi    = 7.82;             % UMi NLoS shadow std
+% Backward-compat aliases (used by Phase 1/2/3 callers; default to UMa)
+c.sigma_los_db         = c.sigma_los_db_uma;
+c.sigma_nlos_db        = c.sigma_nlos_db_uma;
 % Decorrelation distances (Table 7.5-6, UMa)
 c.shadow_corr_m_uma    = 37;               % shadow fading correlation distance, UMa
 c.los_corr_m_uma       = 50;               % LoS-state correlation distance (TR 38.901 §7.6.3.3)
-% UMi equivalents (Table 7.5-6, UMi-Street Canyon)
+% UMi-Street Canyon decorrelation distances (Table 7.5-6)
 c.shadow_corr_m_umi    = 10;
 c.los_corr_m_umi       = 15;
+% Scenario-specific BS heights (TR 38.913 §6.1.6)
+c.h_bs_m_uma           = 25;               % UMa macro height
+c.h_bs_m_umi           = 10;               % UMi-Street Canyon height
 
 % --- simulation timing ---
 c.sim_dt_s             = 0.010;            % 10 ms internal tick, per ADR-5

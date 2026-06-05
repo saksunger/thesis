@@ -69,6 +69,20 @@ shadow_db = shadow_std .* sigma_per_sample_db;
 % For closer distances (UE right under the BS), we clip d_2D to 10 m to
 % avoid NaN propagation and to provide a sensible upper bound on PL.
 % This matches the convention used by most academic NR simulators.
+%
+% Dispatch on scenario:
+%   "UMa" → channel.pathloss_uma  (TR 38.901 Table 7.4.1-1 UMa LoS/NLoS)
+%   "UMi" → channel.pathloss_umi  (TR 38.901 Table 7.4.1-1 UMi-Street Canyon)
+switch upper(string(params.scenario))
+    case "UMA"
+        pl_fn = @channel.pathloss_uma;
+    case "UMI"
+        pl_fn = @channel.pathloss_umi;
+    otherwise
+        error('measurements:unknown_scenario', ...
+              'unknown scenario "%s" (expected "UMa" or "UMi")', params.scenario);
+end
+
 pl_db = nan(T, K);
 for k = 1:K
     dx = ue_track.x_m - cells(k).x_m;
@@ -77,9 +91,9 @@ for k = 1:K
     d_2d = hypot(dx, dy);
     d_2d_clip = max(d_2d, 10);                       % validity clip per TR 38.901
     d_3d = sqrt(d_2d_clip.^2 + dz.^2);
-    pl_db(:, k) = channel.pathloss_uma(d_2d_clip, d_3d, ...
-                                       cells(k).z_m, params.h_ut_m, ...
-                                       params.fc_ghz, los(:, k));
+    pl_db(:, k) = pl_fn(d_2d_clip, d_3d, ...
+                        cells(k).z_m, params.h_ut_m, ...
+                        params.fc_ghz, los(:, k));
 end
 
 % --- 4. RSRP per RE ---
