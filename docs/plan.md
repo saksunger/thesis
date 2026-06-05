@@ -25,8 +25,8 @@
 - [x] MATLAB toolbox availability confirmed (R2023b: Communications + 5G + Stats/ML + Parallel + DL all licensed)
 - [x] 3GPP PDFs downloaded (TS 38.331 v17.16.0, TS 38.133 v17.21.0, TR 38.901 v17.1.0, TS 36.331 v17.16.0, TS 36.133 v17.16.0)
 - [x] Makefile auto-detects MATLAB binary; `make matlab-check`, `make test`, `make demo` all work from terminal
-- [ ] First commit to git
-- [ ] Data symlinks set up (Bangladesh + NordicDat under `data/raw_public/`)
+- [x] First commit to git (initial scaffold + Phase 1.1/2 v0)
+- [x] Real datasets copied to `data/raw_public/` (Bangladesh 535 MB, NordicDat 14 MB; gitignored)
 - [ ] DVC installed (deferred — only if/when we publish data externally)
 
 ### Phase 1 — Simulator core (1.5 weeks) — IN PROGRESS (v0 skeleton done)
