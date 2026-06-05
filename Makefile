@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark anomaly drift adaptive surrogate end2end clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -73,7 +73,12 @@ help:
 	@echo "                  x cell-conditional A-3 labels x bootstrap CI x window sweep (2/5/10/30 s) x ablation"
 	@echo "                  Default timeline: timeline_medium. Overrides: TIMELINE=<name>"
 	@echo ""
-	@echo "Phase 5+ (placeholders):"
+	@echo "Phase 6 (drift benchmark - Iter A implemented):"
+	@echo "  drift-benchmark Iter A: 7 detectors (ADWIN/KSWIN/PageHinkley/DDM/EDDM/MMD-batch/Energy-batch)"
+	@echo "                  x 6 streams (RSRP/SINR fleet means + HO/HOSR/PP/RLF rolling rates)"
+	@echo "                  x bootstrap CI on median latency. Default timeline: timeline_medium (~4.5 min)."
+	@echo ""
+	@echo "Phase 6+ (placeholders):"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
 	@echo "  surrogate       Configuration-performance surrogate"
@@ -95,7 +100,7 @@ test:
 		exit(double(any([r.Failed])))"
 
 pytest:
-	$(PYTHON) -m pytest analysis/anomaly/tests/ tools/tests/ -v
+	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ tools/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
@@ -206,7 +211,17 @@ anomaly-benchmark:
 	$(PYTHON) -m analysis.anomaly.benchmark_eval --timeline $(ANOMALY_BENCH_TIMELINE)
 
 # ---------------------------------------------------------------------------
-# Phase 5+ targets (placeholders, to be implemented as we progress)
+# Phase 6 - Drift benchmark (Iter A landed)
+# ---------------------------------------------------------------------------
+# 7 detectors x 6 streams; ground_truth_drift -> per-(stream, t) labels.
+# Outputs Tables 6.1 (latency CI), 6.2 (miss rate), 6.3 (baseline FPR),
+# plus drift_detection_heatmap.png (Chapter 6 moneyshot).
+DRIFT_BENCH_TIMELINE ?= timeline_medium
+drift-benchmark:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.drift.benchmark_eval --timeline $(DRIFT_BENCH_TIMELINE)
+
+# ---------------------------------------------------------------------------
+# Phase 6+ targets (placeholders)
 # ---------------------------------------------------------------------------
 
 anomaly:

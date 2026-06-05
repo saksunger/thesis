@@ -8,9 +8,9 @@ numpy>=1.26,<3.0
 pyarrow>=15.0,<22.0     # parquet IO (simulator output, processed features)
 
 # --- stats / ML ---
-scipy>=1.12,<2.0        # KS-test, distance metrics
-scikit-learn>=1.4,<2.0  # Phase 5 anomaly models
-# river>=0.21,<1.0      # Phase 6/7 online drift + incremental learning (uncomment when needed)
+scipy>=1.12,<2.0        # KS-test, distance metrics, energy_distance
+scikit-learn>=1.4,<2.0  # Phase 5 anomaly models, RBF kernels for MMD
+river>=0.21,<1.0        # Phase 6 online drift detectors (ADWIN/DDM/EDDM/KSWIN/Page-Hinkley)
 # lightgbm>=4.3,<5.0    # Phase 8 surrogate (uncomment when needed)
 
 # --- plotting ---
