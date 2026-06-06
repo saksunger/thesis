@@ -94,6 +94,13 @@ runs/
 *.log
 *.out
 
+# --- Release bundles (Zenodo deposit tarballs) ---
+# Built on demand via `make zenodo-bundle`; regeneratable from data/
+# + data/manifest.sha256 + scripts/build_zenodo_bundle.py. Too large
+# for git (~1 GB) and would defeat the point of the Zenodo deposit.
+dist/
+.cache/zenodo/
+
 # --- Paper build artifacts ---
 paper/build/
 paper/*.aux

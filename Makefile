@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all all-full all-from-cache matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium gen-timeline-dense-urban eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo seed-replication seed-replication-aggregate seed-replication-all cross-scenario-compare nordicdat-face-validity anomaly drift adaptive surrogate end2end pip-compile pip-sync manifest verify-cache clean
+.PHONY: help all all-full all-from-cache matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium gen-timeline-dense-urban eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo seed-replication seed-replication-aggregate seed-replication-all cross-scenario-compare nordicdat-face-validity anomaly drift adaptive surrogate end2end pip-compile pip-sync manifest verify-cache zenodo-bundle clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -111,6 +111,7 @@ help:
 	@echo "  all-from-cache  Python-only chain on cached deposit (~30 min). Profile A/B."
 	@echo "  manifest        Regenerate data/manifest.sha256 (sha256sum-compatible)"
 	@echo "  verify-cache    Verify cached parquets/CSV against manifest.sha256"
+	@echo "  zenodo-bundle   Pack dist/thesis_artifacts_<version>.tar.gz (verify-cache + build)"
 	@echo "  pip-compile     Regenerate hash-locked requirements.txt from requirements.in"
 	@echo "  pip-sync        Sync venv exactly with requirements.txt (uninstalls extras)"
 	@echo ""
@@ -464,6 +465,14 @@ verify-cache:
 	    exit 2; \
 	fi
 	$(PYTHON) -m tools.manifest --verify --manifest $(MANIFEST_PATH)
+
+# `make zenodo-bundle`: pack the canonical Zenodo deposit tarball from the
+# committed manifest. Output: dist/thesis_artifacts_<version>.tar.gz where
+# <version> comes from docs/zenodo_metadata.json. See docs/zenodo_upload.md
+# for the per-release human workflow (DOI reservation, metadata form,
+# publication, fetch-script DEFAULT_DOI bump).
+zenodo-bundle: verify-cache
+	$(PYTHON) -m scripts.build_zenodo_bundle
 
 # ---------------------------------------------------------------------------
 # Phase 10 — Reproducibility tooling (pip-tools lockfile)

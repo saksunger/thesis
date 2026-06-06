@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developers.zenodo.org/#representation",
+  "version": "v1.0.0-rc1",
+  "title": "ML-Based Anomaly and Drift-Aware Configuration-Performance Modeling for Adaptive Handover Optimization in 5G/6G Networks - Simulator + Analysis Artifacts",
+  "description": "<p>Cached simulator outputs and processed analysis artifacts for the Master's thesis <em>\"ML-Based Anomaly and Drift-Aware Configuration-Performance Modeling for Adaptive Handover Optimization in 5G/6G Networks\"</em> (Wrocław University of Science and Technology, Department of Computer Engineering).</p><p>Contents (~1.19 GB unpacked, 308 files):</p><ul><li><strong>data/simulated/timeline_medium/</strong> (~131 MB) - the primary 30-phase production timeline produced by the custom MATLAB micro-simulator (TR 38.901 channel, TS 38.331 A3 + RLF event loop, NR Standalone Xn intra-RAT inter-gNB handover only per ADR-14).</li><li><strong>data/simulated/timeline_medium_seed42 ... seed46/</strong> (~5x131 MB) - five seed-replicated variants for the Chapter 11 Iter A cross-seed validation experiment.</li><li><strong>data/simulated/timeline_dense_urban/</strong> (~260 MB) - dense-urban variant (3-tier hex, 37 cells, 24 UEs) for the Chapter 11 Iter B cross-scenario validation experiment.</li><li><strong>data/simulated/sweep_static/</strong> - 360-row (TTT x hysteresis x A3-offset x seed) parameter sweep used as the training matrix for the Chapter 8 surrogate.</li><li><strong>data/simulated/calibration_final/</strong> - source data for the Phase 3 KS-test calibration vs the NordicDat op1/5G-NSA/LTE_B20 segment.</li><li><strong>data/processed/</strong> (~135 MB) - every Chapter 5-11 figure, table CSV, and machine-readable acceptance summary, including all per-seed and dense_urban variant outputs.</li><li><strong>data/manifest.sha256</strong> - per-file SHA256 manifest (verify locally via <code>make verify-cache</code> or GNU <code>sha256sum -c</code>).</li></ul><p>The MATLAB simulator source, Python analysis pipelines, hash-locked dependency lockfile, hybrid Python-only Docker image, and full reproducibility guide live in the companion code repository (see <em>related identifiers</em>). Three reviewer profiles (no-MATLAB, Docker, full from-scratch) are documented in <code>docs/reproducibility.md</code>; Profile A reviewers download this deposit and run <code>make all-from-cache</code> to regenerate every Chapter 5-9 + 11 figure in roughly 30 minutes without a MATLAB license.</p><p>Third-party raw datasets (NordicDat, Bangladesh) are <strong>not</strong> redistributed here - they are obtained directly from their respective IEEE DataPort entries per <code>data/raw_public/README.md</code> in the code repository.</p>",
+  "upload_type": "dataset",
+  "creators": [
+    {
+      "name": "Aksunger, Sevda",
+      "affiliation": "Wrocław University of Science and Technology, Department of Computer Engineering",
+      "orcid": null
+    }
+  ],
+  "keywords": [
+    "5G",
+    "6G",
+    "handover",
+    "Xn handover",
+    "machine learning",
+    "anomaly detection",
+    "drift detection",
+    "concept drift",
+    "adaptive retraining",
+    "configuration-performance surrogate",
+    "TS 38.331",
+    "TR 38.901",
+    "MATLAB",
+    "Python",
+    "reproducibility",
+    "thesis artifact",
+    "Master's thesis"
+  ],
+  "language": "eng",
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/<owner>/thesis",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://doi.org/10.3390/s23187976",
+      "relation": "references",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    }
+  ],
+  "communities": [
+    {"identifier": "5g"}
+  ],
+  "notes": "Bundle SHA256 + manifest commit are echoed inside the tarball at BUNDLE_INFO.txt and data/manifest.sha256. Run `make verify-cache` after extraction to confirm every file's hash matches the deposit. See docs/reproducibility.md in the source repository for the full reviewer recipe."
+}
