@@ -125,16 +125,21 @@ Both written via `parquet.write` from MATLAB Communications Toolbox / `parquetwr
 
 ---
 
-## ADR-9 — Versioning: git for code + DVC for data
-*2026-06-05 · accepted*
+## ADR-9 — Versioning: git for code, Zenodo bundle + SHA256 manifest for data
+*2026-06-05 · accepted · revised 2026-06-06 (DVC dropped; Phase 10 A5 superseded the open question)*
 
-**Context.** Simulated parquet files run from MB to multi-GB. Git LFS quota concerns. Real datasets are too large to commit and have licenses.
+**Context.** Simulated parquet files run from MB to multi-GB. Git LFS quota concerns. Real datasets are too large to commit and have licenses. Original ADR planned DVC with a TBD remote; by the time Phase 10 (reproducibility) landed, the simpler primitive — a single content-addressed Zenodo deposit + an in-repo SHA256 manifest — covered every reviewer use case without needing a DVC daemon.
 
-**Decision.** Code → git. Datasets → DVC with local or cloud remote (TBD; SSH to a lab server is simplest first step). `data/raw_public/` and `data/simulated/` contents are .gitignored except README and .gitkeep.
+**Decision.** Code → git. Simulated + processed data → archived as a single `.tar.gz` Zenodo deposit (cut per release via `make zenodo-bundle`, see `docs/zenodo_upload.md`). Integrity verification → `data/manifest.sha256` (committed to the repo, sha256sum-compatible). Raw third-party datasets → not redistributed; reviewers fetch them per `data/raw_public/README.md` from each dataset's original IEEE DataPort entry. `data/raw_public/`, `data/simulated/`, `data/processed/` are .gitignored except README and .gitkeep.
 
 **Consequences.**
-- (+) Reproducibility via DVC pipeline (later).
-- (−) DVC dependency. Mitigation: provide direct download script as fallback.
+- (+) Single-archive reproducibility: `python -m scripts.fetch_zenodo_bundle --doi …` + `make verify-cache` = byte-equivalent inputs to the maintainer's run.
+- (+) No DVC daemon dependency. Reviewers need only Python + git + tar.
+- (+) Citable DOI for every revision (Zenodo's "New version" workflow).
+- (−) ~1 GB per release on Zenodo; well within the free 50 GB-per-record quota.
+- (−) Maintainer must regenerate `data/manifest.sha256` at every release tag (mitigated by `make manifest` + the maintainer note in `docs/reproducibility.md` §3).
+
+**Superseded clauses.** All "DVC remote TBD / DVC pipeline (later)" language from the original ADR is dropped. `dvc` is no longer a runtime dependency and is no longer mentioned in any pipeline target.
 
 ---
 
