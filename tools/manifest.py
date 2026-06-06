@@ -95,8 +95,16 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def _git_describe(repo_root: Path) -> str:
-    """Best-effort 'short SHA + dirty flag' provenance header. Never raises."""
+def _git_describe(repo_root: Path, manifest_rel: str = "data/manifest.sha256") -> str:
+    """Best-effort 'short SHA + dirty flag' provenance header. Never raises.
+
+    "Dirty" here means "tracked source code has unstaged or staged
+    modifications relative to HEAD" — i.e. the running analysis may
+    diverge from what HEAD's code would produce. Untracked files do
+    NOT count (they cannot affect the analysis since nothing references
+    them). The manifest itself is also excluded so that the only-the-
+    manifest-changed case (a normal regeneration step) reads as clean.
+    """
 
     try:
         sha = subprocess.run(
@@ -105,14 +113,22 @@ def _git_describe(repo_root: Path) -> str:
         ).stdout.strip()
     except (subprocess.SubprocessError, FileNotFoundError, OSError):
         return "unknown"
+
     try:
-        dirty = subprocess.run(
-            ["git", "-C", str(repo_root), "status", "--porcelain"],
+        # `diff --name-only HEAD` lists tracked files with staged or
+        # unstaged differences vs HEAD; untracked files are NOT included.
+        diff = subprocess.run(
+            ["git", "-C", str(repo_root), "diff", "--name-only", "HEAD"],
             capture_output=True, text=True, timeout=2, check=True,
         ).stdout.strip()
-        return f"{sha}{'-dirty' if dirty else ''}"
     except (subprocess.SubprocessError, FileNotFoundError, OSError):
         return sha
+
+    other_dirty = [
+        ln for ln in diff.splitlines()
+        if ln.strip() and ln != manifest_rel
+    ]
+    return f"{sha}{'-dirty' if other_dirty else ''}"
 
 
 def render_manifest(repo_root: Path, files: Iterable[Path]) -> str:
