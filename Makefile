@@ -137,7 +137,7 @@ test:
 		exit(double(any([r.Failed])))"
 
 pytest:
-	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ analysis/config_perf/tests/ analysis/demo/tests/ analysis/external_validation/tests/ tools/tests/ -v
+	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ analysis/config_perf/tests/ analysis/demo/tests/ analysis/external_validation/tests/ tools/tests/ scripts/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
