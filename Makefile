@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium gen-timeline-dense-urban eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo seed-replication seed-replication-aggregate seed-replication-all cross-scenario-compare nordicdat-face-validity anomaly drift adaptive surrogate end2end pip-compile pip-sync clean
+.PHONY: help all all-full all-from-cache matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium gen-timeline-dense-urban eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo seed-replication seed-replication-aggregate seed-replication-all cross-scenario-compare nordicdat-face-validity anomaly drift adaptive surrogate end2end pip-compile pip-sync manifest verify-cache clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -106,17 +106,21 @@ help:
 	@echo "                             Override: CROSS_BASE=tl1 CROSS_CONTRAST=tl2"
 	@echo "  nordicdat-face-validity    Iter C: ADWIN+PCA-AE on NordicDat (~1 min, qualitative)"
 	@echo ""
-	@echo "Phase 10 (reproducibility tooling):"
+	@echo "Phase 10 (reproducibility — Tier 1):"
+	@echo "  all-full        Phase 1->11 from scratch (MATLAB required, ~3.5-4 h)"
+	@echo "  all-from-cache  Python-only chain on cached deposit (~30 min). Profile A/B."
+	@echo "  manifest        Regenerate data/manifest.sha256 (sha256sum-compatible)"
+	@echo "  verify-cache    Verify cached parquets/CSV against manifest.sha256"
 	@echo "  pip-compile     Regenerate hash-locked requirements.txt from requirements.in"
 	@echo "  pip-sync        Sync venv exactly with requirements.txt (uninstalls extras)"
 	@echo ""
-	@echo "Phase 9+ (placeholders):"
-	@echo "  drift           Drift detection benchmark"
-	@echo "  adaptive        Drift-aware adaptive framework"
-	@echo "  surrogate       Configuration-performance surrogate"
-	@echo "  end2end         End-to-end timeline demo"
-	@echo "  all             Run everything in order"
+	@echo "  all             Alias for all-full (kept for back-compat)"
 	@echo "  clean           Remove generated artifacts (keeps raw)"
+	@echo ""
+	@echo "Legacy placeholders (point at non-existent modules, kept for old docs):"
+	@echo "  anomaly / drift / adaptive / surrogate / end2end"
+	@echo "  -> use anomaly-benchmark / drift-benchmark / adaptive-benchmark /"
+	@echo "     surrogate-benchmark / end2end-demo instead."
 	@echo ""
 	@echo "Env (auto-detected):"
 	@echo "  MATLAB_DIR=$(MATLAB_DIR)"
@@ -367,7 +371,99 @@ surrogate:
 end2end:
 	$(PYTHON) -m analysis.demo.run --data $(DATA_SIM)/$(TIMELINE)
 
-all: sim sweep-static calibrate anomaly drift adaptive surrogate end2end
+# `make all` is now an alias for `all-full` (Profile C). For the no-MATLAB
+# reviewer flow use `make all-from-cache` (Profile A/B).
+all: all-full
+
+# ---------------------------------------------------------------------------
+# Phase 10 — End-to-end pipeline chains (Tier 1 reproducibility)
+# ---------------------------------------------------------------------------
+# `make all-full`: Phase 1 -> 11 regeneration from scratch. Requires MATLAB
+# R2023b + all 4 toolboxes. Wall clock ~3.5-4 h dominated by the 5-seed
+# replication (~2.5 h MATLAB). Produces every parquet, CSV, JSON, PNG that
+# the thesis cites and a fresh SHA256 manifest.
+#
+# `make all-from-cache`: Python-only regeneration. Requires the cached
+# simulator parquets (Zenodo deposit) under data/simulated/ and
+# data/processed/ — verified against the deposited SHA256 manifest first.
+# Wall clock ~30 min on a 4-core x86_64. This is the Profile A/B path
+# (docs/reproducibility.md).
+#
+# Both targets are tested by re-running `pytest` first. If pytest fails,
+# we abort before kicking off any expensive sim/analysis work.
+
+all-full: matlab-check pytest
+	$(MAKE) calibrate
+	$(MAKE) sim TIMELINE=timeline_medium
+	$(MAKE) sweep-static
+	$(MAKE) gen-timeline-dense-urban
+	$(MAKE) sim TIMELINE=timeline_dense_urban
+	$(MAKE) anomaly-benchmark TIMELINE=timeline_medium
+	$(MAKE) drift-benchmark    TIMELINE=timeline_medium
+	$(MAKE) adaptive-benchmark TIMELINE=timeline_medium
+	$(MAKE) surrogate-benchmark
+	$(MAKE) end2end-demo       TIMELINE=timeline_medium
+	$(MAKE) anomaly-benchmark  TIMELINE=timeline_dense_urban
+	$(MAKE) drift-benchmark    TIMELINE=timeline_dense_urban
+	$(MAKE) adaptive-benchmark TIMELINE=timeline_dense_urban
+	$(MAKE) end2end-demo       TIMELINE=timeline_dense_urban
+	$(MAKE) cross-scenario-compare \
+		CROSS_BASE=timeline_medium \
+		CROSS_CONTRAST=timeline_dense_urban
+	$(MAKE) seed-replication-all
+	@if [ -d data/raw_public/nordicdat ]; then \
+	    $(MAKE) nordicdat-face-validity; \
+	else \
+	    echo "[all-full] skipping nordicdat-face-validity: data/raw_public/nordicdat/ not present (see data/raw_public/README.md)"; \
+	fi
+	$(MAKE) manifest
+	@echo "[all-full] complete. SHA256 manifest -> data/manifest.sha256"
+
+all-from-cache: verify-cache pytest
+	$(MAKE) anomaly-benchmark  TIMELINE=timeline_medium
+	$(MAKE) drift-benchmark    TIMELINE=timeline_medium
+	$(MAKE) adaptive-benchmark TIMELINE=timeline_medium
+	$(MAKE) surrogate-benchmark
+	$(MAKE) end2end-demo       TIMELINE=timeline_medium
+	$(MAKE) anomaly-benchmark  TIMELINE=timeline_dense_urban
+	$(MAKE) drift-benchmark    TIMELINE=timeline_dense_urban
+	$(MAKE) adaptive-benchmark TIMELINE=timeline_dense_urban
+	$(MAKE) end2end-demo       TIMELINE=timeline_dense_urban
+	$(MAKE) cross-scenario-compare \
+		CROSS_BASE=timeline_medium \
+		CROSS_CONTRAST=timeline_dense_urban
+	$(MAKE) seed-replication-aggregate
+	@if [ -d data/raw_public/nordicdat ]; then \
+	    $(MAKE) nordicdat-face-validity; \
+	else \
+	    echo "[all-from-cache] skipping nordicdat-face-validity: data/raw_public/nordicdat/ not present (see data/raw_public/README.md)"; \
+	fi
+	@echo "[all-from-cache] complete. Re-run 'make verify-cache' to confirm cached inputs untouched."
+
+# ---------------------------------------------------------------------------
+# Phase 10 — SHA256 manifest of cached artefacts (deposit + verify)
+# ---------------------------------------------------------------------------
+# `make manifest`: walk data/simulated/ + data/processed/ and write a fresh
+# SHA256 manifest at data/manifest.sha256. Output is sha256sum-compatible so
+# reviewers without Python can run `sha256sum -c data/manifest.sha256`.
+#
+# `make verify-cache`: check every entry in the manifest still exists with
+# the deposited SHA. Extra files in data/ are ignored (out-of-scope for the
+# deposit). Exits non-zero on any missing or mismatched file.
+MANIFEST_PATH ?= data/manifest.sha256
+
+manifest:
+	$(PYTHON) -m tools.manifest --generate --manifest $(MANIFEST_PATH)
+
+verify-cache:
+	@if [ ! -f $(MANIFEST_PATH) ]; then \
+	    echo "[verify-cache] manifest missing at $(MANIFEST_PATH)."; \
+	    echo "[verify-cache] Either (a) fetch the Zenodo bundle (Phase 10 A5),"; \
+	    echo "[verify-cache] or (b) run 'make manifest' to create a fresh one"; \
+	    echo "[verify-cache] from your current data/ (only after 'make all-full')."; \
+	    exit 2; \
+	fi
+	$(PYTHON) -m tools.manifest --verify --manifest $(MANIFEST_PATH)
 
 # ---------------------------------------------------------------------------
 # Phase 10 — Reproducibility tooling (pip-tools lockfile)

@@ -106,7 +106,7 @@ make matlab-check
 make help                  # show all targets
 make matlab-check          # verify required toolboxes are installed + licensed
 make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
-make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation: 356 tests)
+make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest: 378 tests)
 make demo                  # Phase 1 channel/measurement smoke test
 make demo-ho               # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
@@ -134,7 +134,7 @@ Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-356 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation)
+378 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest)
 ```
 
 Expected artifacts:

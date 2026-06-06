@@ -7,13 +7,13 @@ copy-paste recipes. The reproducibility package targets **Tier 1** of the ACM
 artifact review classification (results, code, data, and environment fully
 reproducible by an independent reviewer).
 
-> **Status (2026-06-06).** The pinned-version sections (1.1, 1.2, 1.3) are
-> final. The reviewer recipes in Section 2 reference Makefile targets and
-> helper scripts that land incrementally as Phase 10 A1 (Docker), A3
-> (`make all-*` + `make verify-cache`), and A5 (`scripts/fetch_zenodo_bundle.py`,
-> `make zenodo-bundle`, real Zenodo DOI) complete. Until then, treat each
-> Profile recipe as the **target** workflow; the present check-in lands the
-> environment pin so Section 1 is already actionable.
+> **Status (2026-06-06).** Sections 1 (pinned stack), 2 (reviewer recipes
+> for `make all-*` + `make verify-cache`), and the Docker recipe in Profile B
+> are all actionable today. The Zenodo deposit referenced in Profile A/B
+> (`scripts/fetch_zenodo_bundle.py`, `make zenodo-bundle`, real DOI) lands
+> in Phase 10 A5 — until then, populate `data/` from a local MATLAB run
+> and call `make manifest` to mint a local SHA256 reference; verification
+> works the same way.
 
 ---
 
@@ -197,13 +197,15 @@ After running Profile A/B/C, the following must hold:
 
 ```bash
 # Python unit tests (no simulator required):
-make pytest                                  # 356 passed
+make pytest                                  # 378 passed
 
 # MATLAB unit tests (Profile C only):
 make test                                    # 88/88 PASS
 
 # Cache integrity (Profile A/B):
 make verify-cache                            # all SHA256 hashes match manifest.sha256
+# Equivalent without Python:
+sha256sum -c data/manifest.sha256 --quiet
 
 # Headline figures regenerate byte-equivalent (modulo MPL backend) PNGs:
 ls -lh data/processed/end_to_end_demo_timeline_medium/end_to_end_moneyshot.png

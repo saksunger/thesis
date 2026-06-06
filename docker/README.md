@@ -67,7 +67,7 @@ docker run --rm \
   make pytest
 ```
 
-Expected output tail: `356 passed, 2 warnings in ~35s`. The 2 warnings are
+Expected output tail: `378 passed, 2 warnings in ~35s`. The 2 warnings are
 the documented sklearn PCA divide-by-zero on a degenerate Phase 11C
 NordicDat smoke fixture; harmless.
 
@@ -87,10 +87,10 @@ Outputs land under `data/processed/anomaly_benchmark_timeline_medium/` on
 the host. Same shape for `drift-benchmark`, `adaptive-benchmark`,
 `surrogate-benchmark`, `end2end-demo`.
 
-### 2.4 Full Python-side chain (Phase 10 A3 target)
+### 2.4 Full Python-side chain (`make all-from-cache`)
 
-When `make all-from-cache` lands (Phase 10 A3), the canonical
-one-liner is:
+The canonical one-liner once `data/` has been populated with the Zenodo
+deposit:
 
 ```bash
 docker run --rm \
@@ -99,9 +99,12 @@ docker run --rm \
   make all-from-cache
 ```
 
-This will: verify cache integrity (SHA256) → run anomaly / drift / adaptive
-/ surrogate / end-to-end-demo + external-validation aggregators → regenerate
-every Chapter 5–9 + 11 figure. Expected wall clock: ~30 min on a 4-core x86_64.
+This will: verify cache integrity (SHA256 against `data/manifest.sha256`)
+→ run pytest → run anomaly / drift / adaptive / surrogate / end-to-end demo
+on both `timeline_medium` + `timeline_dense_urban` → re-aggregate the
+seed-replication CSV → optionally re-run NordicDat face validity if the
+dataset is mounted → regenerate every Chapter 5–9 + 11 figure. Expected
+wall clock: ~30 min on a 4-core x86_64.
 
 ---
 
