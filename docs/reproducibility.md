@@ -189,6 +189,22 @@ own licenses. Reviewers download them once via `data/raw_public/README.md`.
 produce `dist/thesis_artifacts_v1.0.0.tar.gz` for upload. See
 `docs/zenodo_upload.md` for the per-release Zenodo workflow.
 
+**Manifest commit cadence (maintainer note).** `data/manifest.sha256` is
+committed to the repo (not gitignored) so reviewers see the canonical SHA
+table without needing to download anything first. The file should be
+regenerated and committed:
+
+1. After every `make all-full` run that is intended to back a thesis figure,
+2. Immediately before cutting a Zenodo deposit (Phase 10 A5) so the
+   in-repo manifest matches the deposit byte-for-byte,
+3. At every thesis defense tag (`git tag v1.0.0` etc.).
+
+Between these checkpoints the local manifest may diverge from the
+committed one (e.g. while iterating on a single phase) — that is fine; just
+do not commit those intermediate manifests. The provenance header inside
+the file (`# Source commit:`) makes it obvious whether the committed
+manifest is in sync with the current data tree.
+
 ---
 
 ## 4. Verifying a successful reproduction
@@ -197,7 +213,7 @@ After running Profile A/B/C, the following must hold:
 
 ```bash
 # Python unit tests (no simulator required):
-make pytest                                  # 378 passed
+make pytest                                  # 379 passed
 
 # MATLAB unit tests (Profile C only):
 make test                                    # 88/88 PASS

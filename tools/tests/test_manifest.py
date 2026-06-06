@@ -120,6 +120,10 @@ class TestSha256File:
 
 
 class TestGenerate:
+    def _hash_body_lines(self, text: str) -> list[str]:
+        """Return only the SHA lines, stripping the `#`-prefixed header."""
+        return [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
+
     def test_writes_sha256sum_compatible_format(self, tmp_path: Path) -> None:
         repo = _make_repo(tmp_path, {
             "data/simulated/t/samples.parquet": b"hello",
@@ -131,18 +135,31 @@ class TestGenerate:
         assert rc == 0
 
         text = out.read_text(encoding="ascii")
-        lines = text.strip().split("\n")
-        assert len(lines) == 2
-        for line in lines:
+        body = self._hash_body_lines(text)
+        assert len(body) == 2
+        for line in body:
             sha, _, rel = line.partition("  ")
             assert len(sha) == 64
             assert all(c in "0123456789abcdef" for c in sha)
             assert rel.startswith("data/")
 
-        rels = [ln.split("  ", 1)[1] for ln in lines]
+        rels = [ln.split("  ", 1)[1] for ln in body]
         assert rels == sorted(rels)
 
-    def test_round_trip_idempotent(self, tmp_path: Path) -> None:
+    def test_header_is_present_and_self_documenting(self, tmp_path: Path) -> None:
+        repo = _make_repo(tmp_path, {
+            "data/simulated/t/x.parquet": b"v",
+        })
+        out = tmp_path / "manifest.sha256"
+        M.generate(repo, out, ["data/simulated"])
+        text = out.read_text(encoding="ascii")
+        comments = [ln for ln in text.splitlines() if ln.startswith("#")]
+        assert any("Generated at" in ln for ln in comments)
+        assert any("Source commit" in ln for ln in comments)
+        assert any("Entry count" in ln for ln in comments)
+
+    def test_round_trip_idempotent_modulo_header(self, tmp_path: Path) -> None:
+        """Body must be byte-identical across runs. Header has a timestamp."""
         repo = _make_repo(tmp_path, {
             "data/simulated/t/x.parquet": b"v1",
             "data/processed/t/y.csv": b"v2",
@@ -151,13 +168,17 @@ class TestGenerate:
         out2 = tmp_path / "m2.sha256"
         M.generate(repo, out1, ["data/simulated", "data/processed"])
         M.generate(repo, out2, ["data/simulated", "data/processed"])
-        assert out1.read_text() == out2.read_text()
+        body1 = self._hash_body_lines(out1.read_text())
+        body2 = self._hash_body_lines(out2.read_text())
+        assert body1 == body2
 
     def test_empty_when_no_files(self, tmp_path: Path) -> None:
         out = tmp_path / "manifest.sha256"
         rc = M.generate(tmp_path, out, ["data/simulated"])
         assert rc == 0
-        assert out.read_text(encoding="ascii") == ""
+        # Header is still written; body is empty.
+        text = out.read_text(encoding="ascii")
+        assert self._hash_body_lines(text) == []
 
 
 # ---------------------------------------------------------------------------

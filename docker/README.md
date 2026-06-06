@@ -67,7 +67,7 @@ docker run --rm \
   make pytest
 ```
 
-Expected output tail: `378 passed, 2 warnings in ~35s`. The 2 warnings are
+Expected output tail: `379 passed, 2 warnings in ~35s`. The 2 warnings are
 the documented sklearn PCA divide-by-zero on a degenerate Phase 11C
 NordicDat smoke fixture; harmless.
 

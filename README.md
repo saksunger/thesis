@@ -29,7 +29,9 @@ Three reviewer profiles, copy-paste recipes for each in
 
 Cached simulator artifacts (~600 MB) plus the manifest+SHA256 are deposited at
 `https://doi.org/10.5281/zenodo.XXXXXXX` (placeholder until thesis submission;
-workflow lands in Phase 10 A5).
+workflow lands in Phase 10 A5). The canonical SHA256 table for that deposit
+is also committed in-repo as [`data/manifest.sha256`](data/manifest.sha256) —
+verify your local cache with `make verify-cache` (or `sha256sum -c`).
 
 ## Repo layout
 
@@ -106,7 +108,7 @@ make matlab-check
 make help                  # show all targets
 make matlab-check          # verify required toolboxes are installed + licensed
 make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
-make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest: 378 tests)
+make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest: 379 tests)
 make demo                  # Phase 1 channel/measurement smoke test
 make demo-ho               # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
@@ -134,7 +136,7 @@ Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-378 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest)
+379 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest)
 ```
 
 Expected artifacts:
