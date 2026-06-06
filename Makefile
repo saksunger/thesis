@@ -251,7 +251,12 @@ anomaly-smoke:
 # Iter B full benchmark (5 detectors, cell-conditional A-3, bootstrap CI,
 # window sweep, per-feature ablation). Default TIMELINE for this target
 # is timeline_medium (30-phase Iter C production timeline).
-ANOMALY_BENCH_TIMELINE ?= timeline_medium
+# ANOMALY_BENCH_TIMELINE wins over TIMELINE so callers can still pin the
+# anomaly benchmark to medium even while running other pipelines on a
+# different sim. If only TIMELINE is set we honor it (Phase 11 Iter B
+# style: `make ... TIMELINE=timeline_dense_urban` should reach every
+# pipeline by default).
+ANOMALY_BENCH_TIMELINE ?= $(if $(filter-out timeline_short,$(TIMELINE)),$(TIMELINE),timeline_medium)
 anomaly-benchmark:
 	$(PYTHON) -m analysis.anomaly.benchmark_eval --timeline $(ANOMALY_BENCH_TIMELINE)
 
@@ -261,7 +266,7 @@ anomaly-benchmark:
 # 7 detectors x 6 streams; ground_truth_drift -> per-(stream, t) labels.
 # Outputs Tables 6.1 (latency CI), 6.2 (miss rate), 6.3 (baseline FPR),
 # plus drift_detection_heatmap.png (Chapter 6 moneyshot).
-DRIFT_BENCH_TIMELINE ?= timeline_medium
+DRIFT_BENCH_TIMELINE ?= $(if $(filter-out timeline_short,$(TIMELINE)),$(TIMELINE),timeline_medium)
 drift-benchmark:
 	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.drift.benchmark_eval --timeline $(DRIFT_BENCH_TIMELINE)
 
@@ -271,7 +276,7 @@ drift-benchmark:
 # 3 strategies (static / periodic / drift-triggered) x PCA-AE base detector
 # x ADWIN drift trigger on HOSR/RLF streams. Outputs sliding PR-AUC + cost
 # ledger + 2-panel figure (Chapter 7 moneyshot).
-ADAPTIVE_BENCH_TIMELINE ?= timeline_medium
+ADAPTIVE_BENCH_TIMELINE ?= $(if $(filter-out timeline_short,$(TIMELINE)),$(TIMELINE),timeline_medium)
 adaptive-benchmark:
 	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.adaptive.benchmark_eval --timeline $(ADAPTIVE_BENCH_TIMELINE)
 
@@ -293,7 +298,7 @@ surrogate-benchmark:
 # ConformalQuantileGB) into a single walk-forward replay on
 # `timeline_medium`. Emits intervention_log + per_window + retrain_log
 # CSVs + 4-panel end_to_end_moneyshot.png (the thesis defense plate).
-DEMO_TIMELINE ?= timeline_medium
+DEMO_TIMELINE ?= $(if $(filter-out timeline_short,$(TIMELINE)),$(TIMELINE),timeline_medium)
 end2end-demo:
 	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.demo.run_demo --timeline $(DEMO_TIMELINE)
 

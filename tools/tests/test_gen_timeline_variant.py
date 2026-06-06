@@ -60,8 +60,13 @@ class TestVariantRegistry:
         v = gt.VARIANTS["dense_urban"]
         assert v["global_overrides"]["n_ue"] == 24
         assert v["global_overrides"]["area_m"] == 750.0
-        assert v["phase_params"]["layout_params"]["n_tiers"] == 3
-        assert v["phase_params"]["layout_params"]["isd_m"] == 350.0
+        lp = v["phase_params"]["layout_params"]
+        assert lp["n_tiers"] == 3
+        assert lp["isd_m"] == 350.0
+        # MATLAB simulator/+utils/run_phase.m requires h_bs_m alongside
+        # n_tiers and isd_m; omitting it crashes the sim with a missing
+        # field error mid-run (Phase 11 Iter B preflight bug).
+        assert lp["h_bs_m"] == 25.0
         # A-3 cell pool should be broader (tiers 0..2 -> cells 1..19)
         assert v["a3_cell_pool"] == list(range(1, 20))
 
@@ -123,6 +128,7 @@ class TestDenseUrbanVariant:
                 assert lp is not None
                 assert lp["n_tiers"] == 3
                 assert lp["isd_m"] == 350.0
+                assert lp["h_bs_m"] == 25.0  # required by MATLAB run_phase.m
                 assert p["params"]["n_ue"] == 24
                 assert p["params"]["area_m"] == 750.0
 
@@ -136,6 +142,7 @@ class TestDenseUrbanVariant:
                 lp = p["params"].get("layout_params")
                 assert lp is not None, f"drift phase {p['phase_id']} missing layout"
                 assert lp["n_tiers"] == 3
+                assert lp["h_bs_m"] == 25.0  # required by MATLAB run_phase.m
 
     def test_d1_traffic_shift_uses_higher_n_ue(self, tmp_path):
         # D-1's n_ue choices should be bumped to maintain "shift" semantics

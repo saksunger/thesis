@@ -72,11 +72,17 @@ VARIANTS: dict[str, dict[str, Any]] = {
         # area_m is shrunk in proportion so UE density (UEs/km^2) rises.
         # speed_mps left unchanged: D-3 still varies it; baseline keeps
         # mixed pedestrian/vehicular per scenarios.baseline default 10 m/s.
+        #
+        # h_bs_m is REQUIRED by simulator/+utils/run_phase.m alongside
+        # n_tiers and isd_m (omission silently propagates as a missing
+        # field and crashes the MATLAB sim). 25 m == UMa baseline antenna
+        # height (TR 38.901 Table 7.2-1); drift_channel_swap will lower
+        # it to 10 m (UMi) per-drift-phase as in timeline_medium.
         "global_overrides": {"n_ue": 24, "area_m": 750.0},
         "phase_params": {
             "n_ue": 24,
             "area_m": 750.0,
-            "layout_params": {"n_tiers": 3, "isd_m": 350.0},
+            "layout_params": {"n_tiers": 3, "isd_m": 350.0, "h_bs_m": 25.0},
         },
         "a3_cell_pool": list(range(1, 20)),   # tier-0..2 (cells where UEs realistically camp)
         "d1_n_ue_choices": [48, 60],
