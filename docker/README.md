@@ -67,7 +67,13 @@ docker run --rm \
   make pytest
 ```
 
-Expected output tail: `396 passed, 2 warnings in ~35s`. The 2 warnings are
+Expected output tail: `416 passed, 1 skipped, 2 warnings in ~35s`. The 1 skip is
+`TestLoadSweep::test_real_parquet_loads_if_present` — this test conditionally
+skips when `data/simulated/sweep_static/sweep_config_perf.parquet` is not on
+disk. The Docker image deliberately does NOT bake `data/` into the layer
+(data is bind-mounted at runtime), so the skip is the correct behaviour
+inside the container. On the host with `data/` populated, the count is
+`417 passed, 0 skipped`. The 2 warnings are
 the documented sklearn PCA divide-by-zero on a degenerate Phase 11C
 NordicDat smoke fixture; harmless.
 

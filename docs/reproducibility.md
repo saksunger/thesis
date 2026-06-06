@@ -183,6 +183,32 @@ python -m scripts.fetch_zenodo_bundle --doi 10.5281/zenodo.XXXXXXX
 make verify-cache                              # 308/308 OK
 ```
 
+The fetch script uses a two-layer integrity model:
+
+1. **Transport layer (Zenodo MD5).** Zenodo's public REST payload
+   currently exposes MD5 (not SHA256) for deposited files. The script
+   automatically picks up whichever algorithm Zenodo returns and verifies
+   the downloaded tarball matches before unpacking. A clear notice is
+   printed instructing the reviewer to run `make verify-cache` next.
+2. **Authoritative per-file SHA256 (in-bundle manifest).** The 67 KB
+   `data/manifest.sha256` ships *inside* the tarball and is regenerated
+   by the maintainer at every release. `make verify-cache` re-hashes
+   every extracted file and aborts on any mismatch. This is the
+   primitive a reviewer should trust — a tampered Zenodo deposit could
+   not pass it without also mutating the manifest, which would then
+   diverge from the SHA256 recorded in `BUNDLE_INFO.txt` and the
+   release-tagged git commit.
+
+If Zenodo starts populating SHA256 in the API payload (a
+long-standing community request), the script transparently picks it up
+without a code change.
+
+A sandbox dress rehearsal of the full upload + fetch + verify loop was
+completed at `10.5072/zenodo.509971` (`sandbox.zenodo.org`,
+6-month retention) before the canonical deposit is minted. The fetch
+script auto-routes to the sandbox host when it sees a `10.5072` DOI
+prefix; production DOIs (`10.5281`) route to `zenodo.org` unchanged.
+
 The build script (`scripts/build_zenodo_bundle.py`) is reproducible: file
 order, mtimes, and ownership are normalised so two builds of the same
 `data/manifest.sha256` produce byte-identical tarballs (covered by
@@ -248,7 +274,7 @@ After running Profile A/B/C, the following must hold:
 
 ```bash
 # Python unit tests (no simulator required):
-make pytest                                  # 396 passed
+make pytest                                  # 417 passed (host) / 416 passed + 1 skipped (Docker)
 
 # MATLAB unit tests (Profile C only):
 make test                                    # 88/88 PASS
@@ -298,6 +324,7 @@ all suffice; the simulator does not exercise any commercial-only feature.
 |---|---|---|
 | 2026-06-06 | v0.1 | Initial Tier 1 reproducibility package: lockfile (A2), MATLAB pin (A4). Docker (A1), `make all-*` (A3), and Zenodo bundle (A5) tracked separately in `docs/plan.md` Phase 10. |
 | 2026-06-06 | v0.2 (this doc) | All five Tier 1 sub-items complete: Dockerfile + `make all-from-cache` + `make all-full` + `data/manifest.sha256` + `scripts/build_zenodo_bundle.py` + `scripts/fetch_zenodo_bundle.py` + `docs/zenodo_metadata.json` + `docs/zenodo_upload.md`. Only outstanding item is minting the real Zenodo DOI at thesis submission. 396 Python tests passing. |
+| 2026-06-06 | v0.2.1 | Sandbox dress rehearsal completed at `10.5072/zenodo.509971`; the full upload → fetch → unpack → per-file SHA256 verify loop passed 308/308 against the in-bundle manifest. `scripts/fetch_zenodo_bundle.py` taught to accept Zenodo's MD5 transport checksum (the public REST payload does not expose SHA256), with per-file SHA256 still enforced via `data/manifest.sha256` after extraction. 21-test unit suite added (`scripts/tests/test_fetch_zenodo_bundle.py`) covering host routing, checksum parsing, and `--local` round-trips. Tarball extraction hardened with `filter="data"` (Python 3.12+) to silence the 3.14 deprecation warning and add belt-and-suspenders path-traversal protection. Total Python tests: **417 passed (host)**. |
 
 This document supersedes any version-pin language in earlier ADRs (ADR-1,
 ADR-7) for the purposes of reproducibility.

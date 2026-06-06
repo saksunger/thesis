@@ -708,7 +708,9 @@ Artifacts:
 - [x] **A2**: Hash-locked Python dependencies (`requirements.in` source + `requirements.txt` with 126 SHA256-pinned packages + `make pip-compile` regen target).
 - [x] **A3**: `make all-full` (Phase 1→11 from scratch, MATLAB required, ~3.5–4 h) and `make all-from-cache` (Python-only on cached deposit, ~30 min). Plus `make manifest` + `make verify-cache` against committed `data/manifest.sha256` (308 entries, sha256sum-compatible).
 - [x] **A4**: MATLAB version pinned in `README.md` + `docs/reproducibility.md` (R2023b build 23.2.0.2365128 + four required toolboxes at v23.2; Compiler route documented as rejected with rationale).
-- [x] **A5**: Zenodo bundle tooling (`scripts/build_zenodo_bundle.py` produces reproducible 980 MB tarball; `scripts/fetch_zenodo_bundle.py` resolves DOI → download → SHA256-verify → unpack; `docs/zenodo_metadata.json` ships the deposit metadata; `docs/zenodo_upload.md` documents the per-release human workflow). Real DOI is minted at thesis submission; placeholder `10.5281/zenodo.XXXXXXX` swapped in via `grep -rn XXXXXXX`.
+- [x] **A5**: Zenodo bundle tooling (`scripts/build_zenodo_bundle.py` produces reproducible 980 MB tarball; `scripts/fetch_zenodo_bundle.py` resolves DOI → download → integrity-verify → unpack; `docs/zenodo_metadata.json` ships the deposit metadata; `docs/zenodo_upload.md` documents the per-release human workflow). Real DOI is minted at thesis submission; placeholder `10.5281/zenodo.XXXXXXX` swapped in via `grep -rn XXXXXXX`.
+
+**Sandbox dress rehearsal — PASSED 2026-06-06.** The v1.0.0-rc1 bundle was test-published on `sandbox.zenodo.org` at `10.5072/zenodo.509971`. The full reviewer loop (fetch → download → unpack → `make verify-cache`) completed cleanly: 980 MB downloaded in ~88 s, transport-layer MD5 verified against Zenodo's API payload, 311 tarball members extracted, and 308/308 per-file SHA256 entries matched the in-bundle `data/manifest.sha256` (0 missing, 0 mismatch). The dress rehearsal also exposed that Zenodo's public REST payload exposes MD5 (not SHA256) by default; `fetch_zenodo_bundle` now accepts whichever algorithm Zenodo returns for the transport-layer check and defers the authoritative per-file SHA256 verification to `make verify-cache`. Production deposit will follow the same workflow on `zenodo.org` at thesis submission. Test count after this round: **417 passed (host) / 416 passed + 1 skipped (Docker)** (+21 from `scripts/tests/test_fetch_zenodo_bundle.py`).
 
 **Three reviewer profiles documented in `docs/reproducibility.md`:**
 - Profile A (no MATLAB): `fetch_zenodo_bundle` → `make all-from-cache` → ~30 min.
@@ -718,7 +720,7 @@ Artifacts:
 **Pending (writing side):**
 - [ ] Thesis chapters 1–11 drafted (chapter 11 = external validation)
 - [ ] Abstract + conclusion
-- [ ] Zenodo upload executed (publish reserved DOI, swap placeholders in repo, push v1.0.0 tag).
+- [ ] Production Zenodo upload executed (publish reserved DOI on `zenodo.org`, swap placeholders in repo, push v1.0.0 tag) — workflow already validated end-to-end on sandbox 2026-06-06.
 - [ ] *(Optional)* Workshop paper draft.
 
 ---

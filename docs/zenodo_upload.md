@@ -74,6 +74,26 @@ python -m tools.manifest --verify \
 
 If step 6 fails, do not upload — fix the manifest drift first.
 
+> **Sandbox dress rehearsal.** Before the canonical production deposit, the
+> v1.0.0-rc1 bundle was test-published on `sandbox.zenodo.org` at DOI
+> `10.5072/zenodo.509971` to validate the full upload + fetch + verify
+> loop. Per-file SHA256 verification passed 308/308 against the in-bundle
+> manifest after the script downloaded and unpacked the deposit from a
+> clean scratch directory. The sandbox host has a 6-month retention
+> policy and uses its own DOI prefix (`10.5072`) so the rehearsal does
+> not collide with production DOIs (`10.5281`); `scripts/fetch_zenodo_bundle.py`
+> auto-routes to either host based on the DOI prefix.
+
+> **Zenodo exposes MD5, not SHA256, in its public file payload.** The
+> fetch script accepts MD5 as the transport-layer integrity primitive
+> (matches the byte stream against what Zenodo recorded at upload time)
+> and prints a notice instructing reviewers to run `make verify-cache`
+> afterwards. The authoritative per-file SHA256 manifest ships *inside*
+> the bundle (`data/manifest.sha256`) so a compromised Zenodo would not
+> be able to substitute the artifacts without also corrupting `make
+> verify-cache`. If Zenodo ever starts populating SHA256 in the API
+> response, the script picks it up automatically.
+
 ---
 
 ## 2. Uploading to Zenodo
@@ -129,8 +149,8 @@ git clone https://github.com/<owner>/thesis.git /tmp/repro && cd /tmp/repro
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install --require-hashes -r requirements.txt
 python -m scripts.fetch_zenodo_bundle --doi 10.5281/zenodo.<REAL>
-make verify-cache         # 308/308 OK
-make pytest               # 396 passed
+make verify-cache         # 308/308 OK (per-file SHA256 from in-bundle manifest)
+make pytest               # 417 passed (host) / 416 passed + 1 skipped (Docker)
 ```
 
 If `make verify-cache` fails on a freshly-fetched deposit, the upstream

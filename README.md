@@ -145,7 +145,7 @@ Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-396 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest + zenodo bundle)
+417 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest + zenodo bundle + zenodo fetch)
 ```
 
 Expected artifacts:
