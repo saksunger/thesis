@@ -1,0 +1,782 @@
+{
+  "timeline_id": "timeline_medium_seed46",
+  "description": "Phase 11 Iter A cross-seed replication. Same structure as timeline_medium (rng_seed=42); master_seed=46.",
+  "scope_note": "Per ADR-14: 5G NR SA, intra-RAT, inter-gNB Xn HO only. Per ADR-15: mobility-family KPIs only (TS 28.554 \u00a76.3.1-2).",
+  "generator": {
+    "tool": "tools.gen_timeline",
+    "variant": "default",
+    "rng_seed": 42,
+    "n_phases": 30,
+    "drifts_per_type": 2,
+    "anomalies_per_type": 10,
+    "head_baseline_phases": 3,
+    "tail_baseline_phases": 3
+  },
+  "global": {
+    "master_seed": 46,
+    "n_ue": 12,
+    "area_m": 1500.0,
+    "default_duration_s": 60.0,
+    "carry_over_ues": true
+  },
+  "phases": [
+    {
+      "phase_id": 1,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 2,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 3,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 4,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 5,
+      "scenario": "drift_channel_swap",
+      "params": {}
+    },
+    {
+      "phase_id": 6,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 7,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 8,
+      "scenario": "drift_mobility",
+      "params": {
+        "speed_mps": 30
+      }
+    },
+    {
+      "phase_id": 9,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 10,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 11,
+      "scenario": "drift_reconfig",
+      "params": {
+        "ho_params": {
+          "ttt_s": 0.512,
+          "hyst_db": 4
+        }
+      }
+    },
+    {
+      "phase_id": 12,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 13,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 14,
+      "scenario": "drift_reconfig",
+      "params": {
+        "ho_params": {
+          "ttt_s": 1.024,
+          "hyst_db": 4
+        }
+      }
+    },
+    {
+      "phase_id": 15,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 16,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 17,
+      "scenario": "drift_channel_swap",
+      "params": {}
+    },
+    {
+      "phase_id": 18,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 19,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 20,
+      "scenario": "drift_mobility",
+      "params": {
+        "speed_mps": 20
+      }
+    },
+    {
+      "phase_id": 21,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 22,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 23,
+      "scenario": "drift_traffic_shift",
+      "params": {
+        "n_ue": 24
+      }
+    },
+    {
+      "phase_id": 24,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 25,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 26,
+      "scenario": "drift_traffic_shift",
+      "params": {
+        "n_ue": 24
+      }
+    },
+    {
+      "phase_id": 27,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 28,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 29,
+      "scenario": "baseline",
+      "params": {}
+    },
+    {
+      "phase_id": 30,
+      "scenario": "baseline",
+      "params": {}
+    }
+  ],
+  "ground_truth_drift": [
+    {
+      "drift_id": "D-2",
+      "phase_id_start": 5,
+      "phase_id_end": 5,
+      "affected_kpis": [
+        "rsrp_serving_dbm",
+        "sinr_serving_db",
+        "rsrq_serving_db"
+      ],
+      "expected_direction": "shape",
+      "note": "Channel swap UMa -> UMi-Street Canyon (BS height 25 -> 10 m)."
+    },
+    {
+      "drift_id": "D-3",
+      "phase_id_start": 8,
+      "phase_id_end": 8,
+      "affected_kpis": [
+        "ho_rate",
+        "dwell_time_s"
+      ],
+      "expected_direction": "shape",
+      "note": "Mobility shift to faster UE speed."
+    },
+    {
+      "drift_id": "D-4",
+      "phase_id_start": 11,
+      "phase_id_end": 11,
+      "affected_kpis": [
+        "hosr",
+        "ping_pong_rate"
+      ],
+      "expected_direction": "shape",
+      "note": "Operator pushes new RRM config (TTT / hyst raised)."
+    },
+    {
+      "drift_id": "D-4",
+      "phase_id_start": 14,
+      "phase_id_end": 14,
+      "affected_kpis": [
+        "hosr",
+        "ping_pong_rate"
+      ],
+      "expected_direction": "shape",
+      "note": "Operator pushes new RRM config (TTT / hyst raised)."
+    },
+    {
+      "drift_id": "D-2",
+      "phase_id_start": 17,
+      "phase_id_end": 17,
+      "affected_kpis": [
+        "rsrp_serving_dbm",
+        "sinr_serving_db",
+        "rsrq_serving_db"
+      ],
+      "expected_direction": "shape",
+      "note": "Channel swap UMa -> UMi-Street Canyon (BS height 25 -> 10 m)."
+    },
+    {
+      "drift_id": "D-3",
+      "phase_id_start": 20,
+      "phase_id_end": 20,
+      "affected_kpis": [
+        "ho_rate",
+        "dwell_time_s"
+      ],
+      "expected_direction": "shape",
+      "note": "Mobility shift to faster UE speed."
+    },
+    {
+      "drift_id": "D-1",
+      "phase_id_start": 23,
+      "phase_id_end": 23,
+      "affected_kpis": [
+        "event_rate",
+        "ping_pong_rate"
+      ],
+      "expected_direction": "up",
+      "note": "Traffic-load shift via UE-density bump (n_ue raised)."
+    },
+    {
+      "drift_id": "D-1",
+      "phase_id_start": 26,
+      "phase_id_end": 26,
+      "affected_kpis": [
+        "event_rate",
+        "ping_pong_rate"
+      ],
+      "expected_direction": "up",
+      "note": "Traffic-load shift via UE-density bump (n_ue raised)."
+    }
+  ],
+  "ground_truth_anomaly": [
+    {
+      "anomaly_id": "A-3-30",
+      "type": "interference_spike",
+      "phase_id": 4,
+      "t_start_s": 4.84,
+      "t_end_s": 20.41,
+      "affected_cell_ids": [
+        1
+      ],
+      "delta_db": -8,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-2-19",
+      "type": "meas_glitch",
+      "phase_id": 4,
+      "t_start_s": 29.21,
+      "t_end_s": 38.59,
+      "affected_ue_ids": [
+        9
+      ],
+      "stuck_value_dbm": -90,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-2-16",
+      "type": "meas_glitch",
+      "phase_id": 6,
+      "t_start_s": 32.23,
+      "t_end_s": 50.56,
+      "affected_ue_ids": [
+        3
+      ],
+      "stuck_value_dbm": -85,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-5-36",
+      "type": "slow_degrade",
+      "phase_id": 7,
+      "t_start_s": 4.42,
+      "t_end_s": 21.16,
+      "affected_ue_ids": [
+        2
+      ],
+      "rate_db_per_s": -0.1,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-5-34",
+      "type": "slow_degrade",
+      "phase_id": 7,
+      "t_start_s": 5.88,
+      "t_end_s": 19.05,
+      "affected_ue_ids": [
+        7
+      ],
+      "rate_db_per_s": -0.15,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-1-04",
+      "type": "rlf_burst",
+      "phase_id": 7,
+      "t_start_s": 16.36,
+      "t_end_s": 28.49,
+      "affected_ue_ids": [
+        1,
+        8
+      ],
+      "delta_db": -20,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-1-07",
+      "type": "rlf_burst",
+      "phase_id": 7,
+      "t_start_s": 17.21,
+      "t_end_s": 30.65,
+      "affected_ue_ids": [
+        3,
+        6
+      ],
+      "delta_db": -18,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-3-22",
+      "type": "interference_spike",
+      "phase_id": 7,
+      "t_start_s": 36.82,
+      "t_end_s": 48.4,
+      "affected_cell_ids": [
+        2
+      ],
+      "delta_db": -10,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-1-05",
+      "type": "rlf_burst",
+      "phase_id": 7,
+      "t_start_s": 40.92,
+      "t_end_s": 53.47,
+      "affected_ue_ids": [
+        5,
+        10,
+        11
+      ],
+      "delta_db": -18,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-1-09",
+      "type": "rlf_burst",
+      "phase_id": 9,
+      "t_start_s": 23.37,
+      "t_end_s": 34.3,
+      "affected_ue_ids": [
+        5,
+        7
+      ],
+      "delta_db": -20,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-2-17",
+      "type": "meas_glitch",
+      "phase_id": 9,
+      "t_start_s": 33.68,
+      "t_end_s": 46.75,
+      "affected_ue_ids": [
+        2
+      ],
+      "stuck_value_dbm": -90,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-5-37",
+      "type": "slow_degrade",
+      "phase_id": 10,
+      "t_start_s": 9.61,
+      "t_end_s": 22.99,
+      "affected_ue_ids": [
+        7
+      ],
+      "rate_db_per_s": -0.1,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-5-32",
+      "type": "slow_degrade",
+      "phase_id": 10,
+      "t_start_s": 23.57,
+      "t_end_s": 40.25,
+      "affected_ue_ids": [
+        10
+      ],
+      "rate_db_per_s": -0.2,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-1-08",
+      "type": "rlf_burst",
+      "phase_id": 10,
+      "t_start_s": 28.81,
+      "t_end_s": 45.23,
+      "affected_ue_ids": [
+        2,
+        10,
+        11
+      ],
+      "delta_db": -20,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-3-29",
+      "type": "interference_spike",
+      "phase_id": 11,
+      "t_start_s": 10.99,
+      "t_end_s": 23.04,
+      "affected_cell_ids": [
+        5
+      ],
+      "delta_db": -8,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-1-01",
+      "type": "rlf_burst",
+      "phase_id": 11,
+      "t_start_s": 22.21,
+      "t_end_s": 30.53,
+      "affected_ue_ids": [
+        12
+      ],
+      "delta_db": -20,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-5-38",
+      "type": "slow_degrade",
+      "phase_id": 12,
+      "t_start_s": 20.51,
+      "t_end_s": 39.0,
+      "affected_ue_ids": [
+        2
+      ],
+      "rate_db_per_s": -0.15,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-5-31",
+      "type": "slow_degrade",
+      "phase_id": 14,
+      "t_start_s": 4.83,
+      "t_end_s": 15.69,
+      "affected_ue_ids": [
+        11
+      ],
+      "rate_db_per_s": -0.15,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-2-15",
+      "type": "meas_glitch",
+      "phase_id": 15,
+      "t_start_s": 10.77,
+      "t_end_s": 30.74,
+      "affected_ue_ids": [
+        9
+      ],
+      "stuck_value_dbm": -90,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-2-18",
+      "type": "meas_glitch",
+      "phase_id": 16,
+      "t_start_s": 25.84,
+      "t_end_s": 39.45,
+      "affected_ue_ids": [
+        5
+      ],
+      "stuck_value_dbm": -85,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-3-28",
+      "type": "interference_spike",
+      "phase_id": 16,
+      "t_start_s": 41.81,
+      "t_end_s": 57.6,
+      "affected_cell_ids": [
+        4,
+        5
+      ],
+      "delta_db": -8,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-1-03",
+      "type": "rlf_burst",
+      "phase_id": 17,
+      "t_start_s": 15.61,
+      "t_end_s": 25.48,
+      "affected_ue_ids": [
+        2,
+        12
+      ],
+      "delta_db": -18,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-3-21",
+      "type": "interference_spike",
+      "phase_id": 18,
+      "t_start_s": 2.13,
+      "t_end_s": 18.79,
+      "affected_cell_ids": [
+        2,
+        5
+      ],
+      "delta_db": -12,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-2-13",
+      "type": "meas_glitch",
+      "phase_id": 18,
+      "t_start_s": 7.71,
+      "t_end_s": 17.39,
+      "affected_ue_ids": [
+        12
+      ],
+      "stuck_value_dbm": -85,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-5-35",
+      "type": "slow_degrade",
+      "phase_id": 18,
+      "t_start_s": 36.55,
+      "t_end_s": 45.2,
+      "affected_ue_ids": [
+        11
+      ],
+      "rate_db_per_s": -0.2,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-3-24",
+      "type": "interference_spike",
+      "phase_id": 19,
+      "t_start_s": 2.78,
+      "t_end_s": 21.93,
+      "affected_cell_ids": [
+        1,
+        2
+      ],
+      "delta_db": -8,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-5-33",
+      "type": "slow_degrade",
+      "phase_id": 19,
+      "t_start_s": 11.72,
+      "t_end_s": 25.4,
+      "affected_ue_ids": [
+        7
+      ],
+      "rate_db_per_s": -0.1,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-2-14",
+      "type": "meas_glitch",
+      "phase_id": 21,
+      "t_start_s": 12.51,
+      "t_end_s": 27.52,
+      "affected_ue_ids": [
+        10
+      ],
+      "stuck_value_dbm": -90,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-5-40",
+      "type": "slow_degrade",
+      "phase_id": 21,
+      "t_start_s": 35.44,
+      "t_end_s": 55.07,
+      "affected_ue_ids": [
+        4
+      ],
+      "rate_db_per_s": -0.1,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    },
+    {
+      "anomaly_id": "A-1-06",
+      "type": "rlf_burst",
+      "phase_id": 22,
+      "t_start_s": 9.69,
+      "t_end_s": 18.53,
+      "affected_ue_ids": [
+        2,
+        4,
+        5
+      ],
+      "delta_db": -15,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-3-25",
+      "type": "interference_spike",
+      "phase_id": 22,
+      "t_start_s": 39.88,
+      "t_end_s": 48.91,
+      "affected_cell_ids": [
+        1,
+        7
+      ],
+      "delta_db": -12,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-3-27",
+      "type": "interference_spike",
+      "phase_id": 23,
+      "t_start_s": 18.93,
+      "t_end_s": 29.47,
+      "affected_cell_ids": [
+        6
+      ],
+      "delta_db": -10,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-2-12",
+      "type": "meas_glitch",
+      "phase_id": 26,
+      "t_start_s": 14.59,
+      "t_end_s": 30.45,
+      "affected_ue_ids": [
+        13
+      ],
+      "stuck_value_dbm": -85,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-1-02",
+      "type": "rlf_burst",
+      "phase_id": 26,
+      "t_start_s": 23.8,
+      "t_end_s": 34.44,
+      "affected_ue_ids": [
+        1,
+        6,
+        9
+      ],
+      "delta_db": -20,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-1-10",
+      "type": "rlf_burst",
+      "phase_id": 26,
+      "t_start_s": 24.28,
+      "t_end_s": 40.49,
+      "affected_ue_ids": [
+        8
+      ],
+      "delta_db": -15,
+      "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events)."
+    },
+    {
+      "anomaly_id": "A-3-26",
+      "type": "interference_spike",
+      "phase_id": 28,
+      "t_start_s": 7.03,
+      "t_end_s": 22.95,
+      "affected_cell_ids": [
+        3
+      ],
+      "delta_db": -12,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-3-23",
+      "type": "interference_spike",
+      "phase_id": 28,
+      "t_start_s": 8.46,
+      "t_end_s": 27.9,
+      "affected_cell_ids": [
+        5
+      ],
+      "delta_db": -10,
+      "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell."
+    },
+    {
+      "anomaly_id": "A-2-20",
+      "type": "meas_glitch",
+      "phase_id": 28,
+      "t_start_s": 27.64,
+      "t_end_s": 36.98,
+      "affected_ue_ids": [
+        7
+      ],
+      "stuck_value_dbm": -95,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-2-11",
+      "type": "meas_glitch",
+      "phase_id": 29,
+      "t_start_s": 14.62,
+      "t_end_s": 25.83,
+      "affected_ue_ids": [
+        4
+      ],
+      "stuck_value_dbm": -85,
+      "note": "Stuck-at RSRP on a single UE (flat-line in samples)."
+    },
+    {
+      "anomaly_id": "A-5-39",
+      "type": "slow_degrade",
+      "phase_id": 29,
+      "t_start_s": 36.45,
+      "t_end_s": 51.06,
+      "affected_ue_ids": [
+        1
+      ],
+      "rate_db_per_s": -0.2,
+      "note": "Linear SINR ramp on a single UE (antenna damage proxy)."
+    }
+  ]
+}
