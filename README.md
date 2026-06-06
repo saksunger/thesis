@@ -14,6 +14,23 @@ Master's thesis — Wrocław University of Science and Technology, Department of
 
 See [`docs/plan.md`](docs/plan.md) for the full phased plan, [`docs/design.md`](docs/design.md) for architecture decisions, [`docs/schema.md`](docs/schema.md) for the KPI dictionary.
 
+## Reproducing this thesis
+
+Three reviewer profiles, copy-paste recipes for each in
+[`docs/reproducibility.md`](docs/reproducibility.md):
+
+- **Profile A — no MATLAB license** (most reviewers): hash-locked Python +
+  cached simulator output from the Zenodo deposit → regenerates every
+  Chapter 5–9 + 11 figure in ~30 min.
+- **Profile B — Docker**: `docker build && docker run` — host-tooling-agnostic,
+  internally Profile A.
+- **Profile C — full from-scratch** (requires MATLAB R2023b): `make all-full`
+  — Phase 1 → 11 end-to-end, ~3–4 h wall clock.
+
+Cached simulator artifacts (~600 MB) plus the manifest+SHA256 are deposited at
+`https://doi.org/10.5281/zenodo.XXXXXXX` (placeholder until thesis submission;
+workflow lands in Phase 10 A5).
+
 ## Repo layout
 
 ```
@@ -52,14 +69,25 @@ See [`docs/plan.md`](docs/plan.md) for the full phased plan, [`docs/design.md`](
 
 ### Prerequisites
 
-- **MATLAB R2023b or newer**, with these add-ons (all auto-checked by `make matlab-check`):
+The full pinned software stack — including MATLAB build number, every Python
+package SHA256, and reviewer recipes for the three reproduction profiles — is
+in [`docs/reproducibility.md`](docs/reproducibility.md). Summary:
+
+- **MATLAB R2023b** (build `23.2.0.2365128`, GA release; later releases
+  untested). All four required toolboxes at v23.2:
   - Communications Toolbox
   - 5G Toolbox
   - Statistics and Machine Learning Toolbox
   - Parallel Computing Toolbox
-  - Deep Learning Toolbox (optional, for the LSTM-AE in Phase 5)
-- Python 3.11+
-- `make`, `git`
+  - Deep Learning Toolbox is optional (only needed if Phase 5 Iter B-2 LSTM-AE
+    is re-run; deferred in current results).
+  - `make matlab-check` verifies all of the above against your local install.
+- **Python 3.12.3** (3.11 source-installs too but results not validated).
+- `make`, `git`.
+
+**Reviewers without MATLAB** can reproduce every Chapter 5–9 + 11 figure from
+cached simulator output — see [`docs/reproducibility.md`](docs/reproducibility.md)
+Profile A.
 
 ### MATLAB path
 
