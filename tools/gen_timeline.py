@@ -51,51 +51,96 @@ from typing import Any, Callable
 
 
 # ---------------------------------------------------------------------------
-# Drift catalogue (must align with `simulator/+scenarios/drift_*.m`)
+# Variant catalogue (Phase 11 Iter B — cross-scenario generalisation).
+#
+# A *variant* bundles a coherent set of deployment-regime deltas
+# (number of cells, UE count, anomaly-affected cell pool, drift D-1
+# n_ue choices) that all need to move together to make the new
+# scenario internally consistent. Variants are layered ON TOP of the
+# CLI flags so callers can still tune any individual axis.
 # ---------------------------------------------------------------------------
-DRIFT_TYPES: list[dict[str, Any]] = [
-    {
-        "id": "D-1",
-        "scenario": "drift_traffic_shift",
-        "params_template": lambda: {"n_ue": random.choice([24, 30])},
-        "affected_kpis": ["event_rate", "ping_pong_rate"],
-        "expected_direction": "up",
-        "note": "Traffic-load shift via UE-density bump (n_ue raised).",
+VARIANTS: dict[str, dict[str, Any]] = {
+    "default": {
+        # Production timeline_medium regime (2-tier hex, 19 cells, 12 UEs).
+        "global_overrides": {},        # do not change CLI-derived globals
+        "phase_params": {},            # no per-phase injection
+        "a3_cell_pool": list(range(1, 8)),    # tier-0 + tier-1
+        "d1_n_ue_choices": [24, 30],
     },
-    {
-        "id": "D-2",
-        "scenario": "drift_channel_swap",
-        "params_template": lambda: {},
-        "affected_kpis": ["rsrp_serving_dbm", "sinr_serving_db", "rsrq_serving_db"],
-        "expected_direction": "shape",
-        "note": "Channel swap UMa -> UMi-Street Canyon (BS height 25 -> 10 m).",
-    },
-    {
-        "id": "D-3",
-        "scenario": "drift_mobility",
-        "params_template": lambda: {"speed_mps": random.choice([20, 25, 30])},
-        "affected_kpis": ["ho_rate", "dwell_time_s"],
-        "expected_direction": "shape",
-        "note": "Mobility shift to faster UE speed.",
-    },
-    {
-        "id": "D-4",
-        "scenario": "drift_reconfig",
-        "params_template": lambda: {
-            "ho_params": {
-                "ttt_s": random.choice([0.512, 1.024]),
-                "hyst_db": random.choice([4, 6]),
-            }
+    "dense_urban": {
+        # Cross-scenario Iter B regime (3-tier hex, 37 cells, 24 UEs).
+        # area_m is shrunk in proportion so UE density (UEs/km^2) rises.
+        # speed_mps left unchanged: D-3 still varies it; baseline keeps
+        # mixed pedestrian/vehicular per scenarios.baseline default 10 m/s.
+        "global_overrides": {"n_ue": 24, "area_m": 750.0},
+        "phase_params": {
+            "n_ue": 24,
+            "area_m": 750.0,
+            "layout_params": {"n_tiers": 3, "isd_m": 350.0},
         },
-        "affected_kpis": ["hosr", "ping_pong_rate"],
-        "expected_direction": "shape",
-        "note": "Operator pushes new RRM config (TTT / hyst raised).",
+        "a3_cell_pool": list(range(1, 20)),   # tier-0..2 (cells where UEs realistically camp)
+        "d1_n_ue_choices": [48, 60],
     },
-]
+}
+
+
+# ---------------------------------------------------------------------------
+# Drift catalogue (must align with `simulator/+scenarios/drift_*.m`).
+# D-1's n_ue choices are variant-dependent so the "traffic shift"
+# stays a real shift (e.g. doubles baseline UEs) regardless of variant.
+# ---------------------------------------------------------------------------
+def _drift_types_for_variant(variant_name: str) -> list[dict[str, Any]]:
+    """Return the 4 drift entries with variant-tuned D-1 n_ue choices."""
+    variant = VARIANTS[variant_name]
+    n_ue_choices = tuple(variant["d1_n_ue_choices"])
+    return [
+        {
+            "id": "D-1",
+            "scenario": "drift_traffic_shift",
+            "params_template": lambda choices=n_ue_choices: {
+                "n_ue": random.choice(list(choices))
+            },
+            "affected_kpis": ["event_rate", "ping_pong_rate"],
+            "expected_direction": "up",
+            "note": "Traffic-load shift via UE-density bump (n_ue raised).",
+        },
+        {
+            "id": "D-2",
+            "scenario": "drift_channel_swap",
+            "params_template": lambda: {},
+            "affected_kpis": ["rsrp_serving_dbm", "sinr_serving_db", "rsrq_serving_db"],
+            "expected_direction": "shape",
+            "note": "Channel swap UMa -> UMi-Street Canyon (BS height 25 -> 10 m).",
+        },
+        {
+            "id": "D-3",
+            "scenario": "drift_mobility",
+            "params_template": lambda: {"speed_mps": random.choice([20, 25, 30])},
+            "affected_kpis": ["ho_rate", "dwell_time_s"],
+            "expected_direction": "shape",
+            "note": "Mobility shift to faster UE speed.",
+        },
+        {
+            "id": "D-4",
+            "scenario": "drift_reconfig",
+            "params_template": lambda: {
+                "ho_params": {
+                    "ttt_s": random.choice([0.512, 1.024]),
+                    "hyst_db": random.choice([4, 6]),
+                }
+            },
+            "affected_kpis": ["hosr", "ping_pong_rate"],
+            "expected_direction": "shape",
+            "note": "Operator pushes new RRM config (TTT / hyst raised).",
+        },
+    ]
 
 
 # ---------------------------------------------------------------------------
 # Anomaly catalogue (must align with `simulator/+anomalies/*.m`)
+# A-3's affected-cell pool is variant-dependent (dense_urban has more
+# cells, so the pool of "high-traffic" cells where UEs realistically
+# camp is bigger).
 # ---------------------------------------------------------------------------
 def _ue_sample(n_ue: int, k_min: int, k_max: int) -> list[int]:
     """Sample k unique UE ids in [1, n_ue]."""
@@ -103,48 +148,55 @@ def _ue_sample(n_ue: int, k_min: int, k_max: int) -> list[int]:
     return sorted(random.sample(range(1, n_ue + 1), k=k))
 
 
-ANOMALY_TYPES: list[dict[str, Any]] = [
-    {
-        "id": "A-1",
-        "type": "rlf_burst",
-        "params_fn": lambda n_ue: {
-            "affected_ue_ids": _ue_sample(n_ue, 1, 3),
-            "delta_db": random.choice([-15, -18, -20]),
+def _anomaly_types_for_variant(variant_name: str) -> list[dict[str, Any]]:
+    variant = VARIANTS[variant_name]
+    a3_pool = list(variant["a3_cell_pool"])
+    return [
+        {
+            "id": "A-1",
+            "type": "rlf_burst",
+            "params_fn": lambda n_ue: {
+                "affected_ue_ids": _ue_sample(n_ue, 1, 3),
+                "delta_db": random.choice([-15, -18, -20]),
+            },
+            "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events).",
         },
-        "note": "Transient SINR collapse on 1-3 UEs (should trigger RLF events).",
-    },
-    {
-        "id": "A-2",
-        "type": "meas_glitch",
-        "params_fn": lambda n_ue: {
-            "affected_ue_ids": [random.randint(1, n_ue)],
-            "stuck_value_dbm": random.choice([-95, -90, -85]),
+        {
+            "id": "A-2",
+            "type": "meas_glitch",
+            "params_fn": lambda n_ue: {
+                "affected_ue_ids": [random.randint(1, n_ue)],
+                "stuck_value_dbm": random.choice([-95, -90, -85]),
+            },
+            "note": "Stuck-at RSRP on a single UE (flat-line in samples).",
         },
-        "note": "Stuck-at RSRP on a single UE (flat-line in samples).",
-    },
-    {
-        "id": "A-3",
-        "type": "interference_spike",
-        "params_fn": lambda _n_ue: {
-            # Cells are deterministic in our 2-tier hex layout: ids 1..7
-            # (tier-0 center plus 6 tier-1 ring). Restrict to that set.
-            "affected_cell_ids": sorted(
-                random.sample(list(range(1, 8)), k=random.randint(1, 2))
-            ),
-            "delta_db": random.choice([-8, -10, -12]),
+        {
+            "id": "A-3",
+            "type": "interference_spike",
+            "params_fn": lambda _n_ue, pool=tuple(a3_pool): {
+                "affected_cell_ids": sorted(
+                    random.sample(list(pool), k=random.randint(1, 2))
+                ),
+                "delta_db": random.choice([-8, -10, -12]),
+            },
+            "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell.",
         },
-        "note": "Per-cell interference spike, viewable by all UEs that camp on the targeted cell.",
-    },
-    {
-        "id": "A-5",
-        "type": "slow_degrade",
-        "params_fn": lambda n_ue: {
-            "affected_ue_ids": [random.randint(1, n_ue)],
-            "rate_db_per_s": random.choice([-0.10, -0.15, -0.20]),
+        {
+            "id": "A-5",
+            "type": "slow_degrade",
+            "params_fn": lambda n_ue: {
+                "affected_ue_ids": [random.randint(1, n_ue)],
+                "rate_db_per_s": random.choice([-0.10, -0.15, -0.20]),
+            },
+            "note": "Linear SINR ramp on a single UE (antenna damage proxy).",
         },
-        "note": "Linear SINR ramp on a single UE (antenna damage proxy).",
-    },
-]
+    ]
+
+
+# Backwards-compat: code paths that still import DRIFT_TYPES / ANOMALY_TYPES
+# (e.g. unit tests pre-Phase-11) keep working with the "default" variant.
+DRIFT_TYPES = _drift_types_for_variant("default")
+ANOMALY_TYPES = _anomaly_types_for_variant("default")
 
 
 # ---------------------------------------------------------------------------
@@ -212,10 +264,14 @@ def _plan_drift_slots(
     return sorted(drift_pids)
 
 
-def _assign_drift_types(n_drift_phases: int, drifts_per_type: int) -> list[dict[str, Any]]:
+def _assign_drift_types(
+    drift_types: list[dict[str, Any]],
+    n_drift_phases: int,
+    drifts_per_type: int,
+) -> list[dict[str, Any]]:
     """Build a shuffled list of drift dicts: each type appears `drifts_per_type` times."""
     bag: list[dict[str, Any]] = []
-    for drift in DRIFT_TYPES:
+    for drift in drift_types:
         for _ in range(drifts_per_type):
             bag.append(drift)
     if len(bag) != n_drift_phases:
@@ -260,31 +316,49 @@ def _build_anomaly_entry(
 def build_timeline(args: argparse.Namespace) -> dict[str, Any]:
     random.seed(args.rng_seed)
 
-    n_drift_phases = args.drifts_per_type * len(DRIFT_TYPES)
+    # Variant is optional for backwards-compat with pre-Phase-11 callers
+    # that build the namespace by hand without the flag.
+    variant_name = getattr(args, "variant", "default")
+    if variant_name not in VARIANTS:
+        raise ValueError(
+            f"unknown variant '{variant_name}'. Known: {sorted(VARIANTS)}"
+        )
+    variant = VARIANTS[variant_name]
+    drift_types = _drift_types_for_variant(variant_name)
+    anomaly_types = _anomaly_types_for_variant(variant_name)
+    baseline_phase_params: dict[str, Any] = dict(variant["phase_params"])
+
+    n_drift_phases = args.drifts_per_type * len(drift_types)
     drift_pids = _plan_drift_slots(
         args.n_phases, args.head_baseline_phases, args.tail_baseline_phases, n_drift_phases
     )
-    drift_bag = _assign_drift_types(n_drift_phases, args.drifts_per_type)
+    drift_bag = _assign_drift_types(drift_types, n_drift_phases, args.drifts_per_type)
     drift_map: dict[int, dict[str, Any]] = {pid: drift_bag[i] for i, pid in enumerate(drift_pids)}
 
     # --- Phases ---
+    # Variant-specific overrides (e.g. dense_urban's layout_params) are
+    # injected into BOTH baseline and drift phases so the layout stays
+    # consistent across the whole timeline. Drift-specific params override
+    # any variant defaults (e.g. drift_traffic_shift's n_ue takes
+    # precedence over the variant's baseline n_ue).
     phases: list[dict[str, Any]] = []
-    # Per-phase n_ue used by anomaly affected-UE sampling (D-1 raises n_ue,
-    # so anomalies in those phases can affect higher UE ids).
     phase_n_ue: dict[int, int] = {}
+    variant_default_n_ue = int(baseline_phase_params.get("n_ue", args.n_ue))
     for phase_id in range(1, args.n_phases + 1):
+        params = dict(baseline_phase_params)
         if phase_id in drift_map:
             d = drift_map[phase_id]
-            params = d["params_template"]()
+            # drift params override variant baseline defaults
+            params.update(d["params_template"]())
             phases.append(
                 {"phase_id": phase_id, "scenario": d["scenario"], "params": params}
             )
-            phase_n_ue[phase_id] = int(params.get("n_ue", args.n_ue))
+            phase_n_ue[phase_id] = int(params.get("n_ue", variant_default_n_ue))
         else:
             phases.append(
-                {"phase_id": phase_id, "scenario": "baseline", "params": {}}
+                {"phase_id": phase_id, "scenario": "baseline", "params": params}
             )
-            phase_n_ue[phase_id] = args.n_ue
+            phase_n_ue[phase_id] = variant_default_n_ue
 
     # --- Ground truth drift ---
     ground_truth_drift = [
@@ -308,7 +382,7 @@ def build_timeline(args: argparse.Namespace) -> dict[str, Any]:
     )
     ground_truth_anomaly: list[dict[str, Any]] = []
     counter = 1
-    for atype in ANOMALY_TYPES:
+    for atype in anomaly_types:
         for _ in range(args.anomalies_per_type):
             phase_id = random.choice(anomaly_phase_pool)
             ground_truth_anomaly.append(
@@ -339,6 +413,7 @@ def build_timeline(args: argparse.Namespace) -> dict[str, Any]:
         ),
         "generator": {
             "tool": "tools.gen_timeline",
+            "variant": variant_name,
             "rng_seed": args.rng_seed,
             "n_phases": args.n_phases,
             "drifts_per_type": args.drifts_per_type,
@@ -348,8 +423,8 @@ def build_timeline(args: argparse.Namespace) -> dict[str, Any]:
         },
         "global": {
             "master_seed": args.master_seed,
-            "n_ue": args.n_ue,
-            "area_m": args.area_m,
+            "n_ue": int(variant["global_overrides"].get("n_ue", args.n_ue)),
+            "area_m": float(variant["global_overrides"].get("area_m", args.area_m)),
             "default_duration_s": args.phase_duration_s,
             "carry_over_ues": args.carry_over_ues,
         },
@@ -388,6 +463,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="Final clean phases (recovery window for post-drift evaluation)")
     p.add_argument("--rng-seed", type=int, default=42,
                    help="Seed for Python-side random selections (reproducibility)")
+    p.add_argument("--variant", default="default",
+                   choices=sorted(VARIANTS),
+                   help="Scenario variant preset (default: production timeline_medium regime; "
+                        "dense_urban: 3-tier hex, 24 UEs, 750 m area, isd_m=350 — Phase 11 "
+                        "Iter B cross-scenario benchmark).")
     return p.parse_args(argv)
 
 

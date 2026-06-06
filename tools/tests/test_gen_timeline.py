@@ -196,3 +196,8 @@ def test_cli_writes_file(tmp_path):
     assert len(tl["phases"]) == 10
     assert len(tl["ground_truth_drift"]) == 4
     assert len(tl["ground_truth_anomaly"]) == 8
+
+
+# ---------------------------------------------------------------------------
+# Phase 11 Iter B - variant flag tests
+# ---------------------------------------------------------------------------
