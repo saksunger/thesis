@@ -1,0 +1,96 @@
+# Keep the Docker build context small + the image deterministic.
+# Anything excluded here is NOT shipped to the daemon and NOT in the image.
+
+# --- venvs / caches (huge, host-specific) ---
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- raw + generated data (mounted at runtime, never baked) ---
+data/raw_public/**
+data/simulated/**
+data/processed/**
+data/external/**
+!data/raw_public/.gitkeep
+!data/raw_public/README.md
+!data/simulated/.gitkeep
+!data/simulated/README.md
+!data/processed/.gitkeep
+!data/processed/README.md
+!data/external/.gitkeep
+
+# --- IDE / agent local state (personal, irrelevant) ---
+.cursor/
+.claude/
+.continue/
+.aider*
+.agents/
+skills-lock.json
+CLAUDE.md
+AGENTS.md
+.augment*
+.copilot*
+.vscode/
+.idea/
+.fleet/
+.zed/
+
+# --- MATLAB-only artifacts (image is Python-only) ---
+*.asv
+*.mex*
+*.mat
+*.fig
+slprj/
+sccprj/
+matlab_crash_dump.*
+.matlab/
+
+# --- paper build (LaTeX, not needed at runtime) ---
+paper/build/
+paper/*.aux
+paper/*.log
+paper/*.bbl
+paper/*.blg
+paper/*.toc
+paper/*.synctex.gz
+paper/*.pdf
+
+# --- logs / outputs ---
+logs/
+outputs/
+runs/
+*.log
+
+# --- git internals (we use ARG GIT_SHA for provenance instead) ---
+.git/
+.gitignore
+.gitattributes
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- misc ---
+.env
+.env.local
+.env.*.local
+node_modules/
+*.tar.gz
+*.zip
+dist/
+
+# --- personal notes / out-of-scope docs ---
+thesis_guide.md
+notes/
+scratch/
+*.draft.md
+Karta pracy dyplomowej*
+
+# Note: docker/ itself is intentionally NOT excluded — the build needs to
+# COPY docker/entrypoint.sh into the image. The folder is < 20 KB total.
