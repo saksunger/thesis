@@ -1,0 +1,41 @@
+# Top-level Python dependencies for the analysis side of the thesis pipeline.
+#
+# This file is the *source of truth* for direct dependencies. Hash-locked
+# transitive pins live in `requirements.txt`, regenerated via:
+#
+#     make pip-compile
+#
+# Both files are committed. Reviewers install from `requirements.txt` (which
+# enforces the lockfile via hash checking). Maintainers edit `requirements.in`
+# and rerun `make pip-compile`.
+#
+# Target Python: 3.12 (see docs/reproducibility.md). Constraints are pinned
+# to known-good majors; we re-evaluate yearly.
+
+# --- data wrangling ---
+pandas>=2.2,<3.0
+numpy>=1.26,<3.0
+pyarrow>=15.0,<22.0     # parquet IO (simulator output, processed features)
+
+# --- stats / ML ---
+scipy>=1.12,<2.0        # KS-test, distance metrics, energy_distance
+scikit-learn>=1.4,<2.0  # Phase 5 anomaly models, RBF kernels for MMD
+river>=0.21,<1.0        # Phase 6 online drift detectors (ADWIN/DDM/EDDM/KSWIN/Page-Hinkley)
+# lightgbm>=4.3,<5.0    # Phase 8 surrogate (uncomment when needed)
+
+# --- plotting ---
+matplotlib>=3.8,<4.0
+seaborn>=0.13,<1.0      # convenience for distribution plots
+
+# --- notebooks (optional but standard for EDA) ---
+jupyter>=1.0,<2.0
+ipykernel>=6.29,<7.0
+
+# --- quality of life ---
+tqdm>=4.66,<5.0
+
+# --- testing ---
+pytest>=8.0,<9.0
+
+# --- reproducibility tooling (Phase 10 Iter A) ---
+pip-tools>=7.5,<8.0     # `pip-compile --generate-hashes` for the lockfile

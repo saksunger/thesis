@@ -227,8 +227,22 @@ make all         # everything end-to-end
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.txt
 ```
+
+`requirements.txt` is a **hash-locked lockfile** generated from `requirements.in` via
+`pip-tools` (126 packages pinned, every wheel SHA256-verified). Reviewers get a
+byte-identical install. Maintainer workflow:
+
+```bash
+# edit top-level deps in requirements.in, then:
+make pip-compile       # regenerate hash-locked requirements.txt
+make pip-sync          # align active venv exactly with the lockfile (destructive)
+```
+
+Commit both files. Python 3.12 is the pinned interpreter (Docker image and CI use
+3.12-slim). 3.11 also works for source installs but is not what Phase 5–11 results
+were produced on.
 
 ## Real public datasets
 

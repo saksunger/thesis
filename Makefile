@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium gen-timeline-dense-urban eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo seed-replication seed-replication-aggregate seed-replication-all cross-scenario-compare nordicdat-face-validity anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium gen-timeline-dense-urban eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo seed-replication seed-replication-aggregate seed-replication-all cross-scenario-compare nordicdat-face-validity anomaly drift adaptive surrogate end2end pip-compile pip-sync clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -105,6 +105,10 @@ help:
 	@echo "  cross-scenario-compare     Iter B: compare base vs contrast timeline pipelines"
 	@echo "                             Override: CROSS_BASE=tl1 CROSS_CONTRAST=tl2"
 	@echo "  nordicdat-face-validity    Iter C: ADWIN+PCA-AE on NordicDat (~1 min, qualitative)"
+	@echo ""
+	@echo "Phase 10 (reproducibility tooling):"
+	@echo "  pip-compile     Regenerate hash-locked requirements.txt from requirements.in"
+	@echo "  pip-sync        Sync venv exactly with requirements.txt (uninstalls extras)"
 	@echo ""
 	@echo "Phase 9+ (placeholders):"
 	@echo "  drift           Drift detection benchmark"
@@ -364,6 +368,29 @@ end2end:
 	$(PYTHON) -m analysis.demo.run --data $(DATA_SIM)/$(TIMELINE)
 
 all: sim sweep-static calibrate anomaly drift adaptive surrogate end2end
+
+# ---------------------------------------------------------------------------
+# Phase 10 — Reproducibility tooling (pip-tools lockfile)
+# ---------------------------------------------------------------------------
+# `pip-compile` regenerates the hash-locked requirements.txt from
+# requirements.in (edit deps there, then run this). We strip the
+# machine-specific `--trusted-host` lines that pip-compile inherits
+# from the user's local pip config so the lockfile is portable.
+#
+# `pip-sync` aligns the active venv with the lockfile exactly (uninstalls
+# anything not in requirements.txt). Use after a fresh git pull.
+pip-compile:
+	$(PYTHON) -m pip install --quiet --upgrade pip-tools
+	$(PYTHON) -m piptools compile --allow-unsafe --generate-hashes \
+		--resolver=backtracking \
+		--output-file=requirements.txt requirements.in
+	sed -i '/^--trusted-host/d' requirements.txt
+	@echo "Regenerated requirements.txt ($$(grep -cE '^[a-zA-Z]' requirements.txt) packages pinned)."
+	@echo "Commit both requirements.in and requirements.txt."
+
+pip-sync:
+	$(PYTHON) -m pip install --quiet --upgrade pip-tools
+	$(PYTHON) -m piptools sync requirements.txt
 
 clean:
 	rm -rf $(DATA_SIM)/* $(DATA_PROC)/*
