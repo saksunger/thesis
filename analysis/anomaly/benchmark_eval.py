@@ -533,12 +533,37 @@ def run_benchmark(cfg: BenchmarkConfig) -> dict:
         wide = per_anom.pivot(index="anomaly_type", columns="detector", values="ci_str")
         wide.to_csv(out_dir / "table_5_1_pr_auc_wide.csv")
 
-    # Winning detector = highest mean PR-AUC across anomaly types
+    # Two complementary "winner" definitions (Phase 11 Iter A surfaced a
+    # Simpson's-paradox style discrepancy between them, so we emit both):
+    #
+    #   winner_per_type_mean -- mean over PER-ANOMALY-TYPE PR-AUC rows.
+    #       Weights every anomaly type equally, regardless of positive
+    #       count. Good for "consistent across anomaly families" claims;
+    #       noisier when several detectors cluster within ~0.03 PR-AUC.
+    #
+    #   winner_overall_pool -- argmax over the OVERALL (pooled-timeline)
+    #       PR-AUC. Reflects what an operator deploying ONE detector for
+    #       everything would see. More stable across simulator seeds.
+    #
+    # The original ``winning_detector_by_mean_pr_auc`` field is kept for
+    # backwards compatibility with Phase 5 consumers; the two new
+    # ``*_by_per_type_mean_pr_auc`` and ``*_by_overall_pr_auc`` fields are
+    # the authoritative ones going forward.
     if per_anom.empty:
-        winner = ref.detector_names[0]
+        winner_per_type_mean = ref.detector_names[0]
     else:
-        winner = per_anom.groupby("detector")["pr_auc"].mean().idxmax()
-    print(f"\n[winner] best detector by mean PR-AUC: {winner}")
+        winner_per_type_mean = (
+            per_anom.groupby("detector")["pr_auc"].mean().idxmax()
+        )
+    if overall.empty:
+        winner_overall_pool = winner_per_type_mean
+    else:
+        winner_overall_pool = (
+            overall.sort_values("pr_auc", ascending=False).iloc[0]["detector"]
+        )
+    winner = winner_per_type_mean  # back-compat: ablation, downstream code
+    print(f"\n[winner] per-type-mean PR-AUC: {winner_per_type_mean}")
+    print(f"[winner] overall (pooled) PR-AUC: {winner_overall_pool}")
 
     # Drift-degradation figure
     _save_drift_degradation_figure(per_phase, cfg, out_dir / "drift_degradation.png")
@@ -572,7 +597,11 @@ def run_benchmark(cfg: BenchmarkConfig) -> dict:
     # JSON summary
     summary = {
         "config": asdict(cfg),
-        "winning_detector_by_mean_pr_auc": winner,
+        # Back-compat alias (used by Phase 5 consumers; identical to
+        # winning_detector_by_per_type_mean_pr_auc below).
+        "winning_detector_by_mean_pr_auc": winner_per_type_mean,
+        "winning_detector_by_per_type_mean_pr_auc": winner_per_type_mean,
+        "winning_detector_by_overall_pr_auc": winner_overall_pool,
         "elapsed_s": round(time.perf_counter() - t_start, 1),
         "out_dir": str(out_dir),
     }
