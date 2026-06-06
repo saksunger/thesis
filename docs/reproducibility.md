@@ -1,6 +1,6 @@
 # Reproducibility — How to re-derive every result in this thesis
 
-This document is the binding reference for reproducing the simulator-track
+This document is the binding reference for reproducing the simulator-driven
 results (Chapters 5–9 + 11). It pins the exact software versions used to
 produce the committed artifacts, and describes three reviewer profiles with
 copy-paste recipes. The reproducibility package targets **Tier 1** of the ACM
@@ -9,11 +9,14 @@ reproducible by an independent reviewer).
 
 > **Status (2026-06-06).** Sections 1 (pinned stack), 2 (reviewer recipes
 > for `make all-*` + `make verify-cache`), and the Docker recipe in Profile B
-> are all actionable today. The Zenodo deposit referenced in Profile A/B
-> (`scripts/fetch_zenodo_bundle.py`, `make zenodo-bundle`, real DOI) lands
-> in Phase 10 A5 — until then, populate `data/` from a local MATLAB run
-> and call `make manifest` to mint a local SHA256 reference; verification
-> works the same way.
+> are all actionable today. The Zenodo deposit tooling
+> (`scripts/build_zenodo_bundle.py`, `scripts/fetch_zenodo_bundle.py`,
+> `make zenodo-bundle`, `docs/zenodo_upload.md`) is also in place: the
+> bundle builds reproducibly (980 MB compressed / 1.25 GB unpacked /
+> 308 files / SHA256 round-trip verified). The only remaining blocker is
+> minting the real DOI on Zenodo at thesis submission — wherever this doc
+> says `10.5281/zenodo.XXXXXXX`, that placeholder gets replaced once the
+> upload is published.
 
 ---
 
@@ -94,7 +97,9 @@ python3.12 -m venv .venv && source .venv/bin/activate
 pip install --require-hashes -r requirements.txt
 
 # Pull the cached simulator artifacts (~1.2 GB) from Zenodo:
-python scripts/fetch_zenodo_bundle.py        # Phase 10 A5 — see Section 3
+python -m scripts.fetch_zenodo_bundle --doi 10.5281/zenodo.XXXXXXX
+# (until the DOI is minted, use --local dist/thesis_artifacts_<ver>.tar.gz
+#  built upstream via `make zenodo-bundle`; see docs/zenodo_upload.md)
 
 # (optional) Pull the NordicDat segment for Phase 11C:
 #   follow data/raw_public/README.md
@@ -121,7 +126,7 @@ docker build -t thesis-repro -f docker/Dockerfile .
 docker run --rm -it \
   -v "$(pwd)/data:/app/data" \
   thesis-repro \
-  bash -c "python scripts/fetch_zenodo_bundle.py && make all-from-cache"
+  bash -c "python -m scripts.fetch_zenodo_bundle --doi 10.5281/zenodo.XXXXXXX && make all-from-cache"
 ```
 
 The container ships Python 3.12 + the full hash-locked lockfile. It does
@@ -161,11 +166,32 @@ A Zenodo deposit accompanies this thesis to provide:
 - byte-identical artifacts so Profile A reviewers do not need MATLAB,
 - frozen snapshot of the repository at the defense commit.
 
-**Deposit URL:** `https://doi.org/10.5281/zenodo.XXXXXXX` *(placeholder — final
-DOI minted at thesis submission; per-release upload workflow lands in
-Phase 10 A5 — see `docs/plan.md`)*.
+**Deposit URL:** `https://doi.org/10.5281/zenodo.XXXXXXX` *(placeholder —
+real DOI reserved + activated at thesis submission per the workflow in
+[`docs/zenodo_upload.md`](zenodo_upload.md). Once the DOI is live, the
+placeholder is replaced repo-wide via `grep -rn XXXXXXX`.)*.
 
-**Bundle manifest** (~1.19 GB unpacked, ~0.9 GB compressed):
+**Bundle build & verify (maintainer + reviewer)**:
+
+```bash
+# Maintainer side — pack the tarball from the committed manifest:
+make zenodo-bundle
+# → dist/thesis_artifacts_v1.0.0.tar.gz (~0.98 GB, 308 files)
+
+# Reviewer side — fetch + verify the published deposit:
+python -m scripts.fetch_zenodo_bundle --doi 10.5281/zenodo.XXXXXXX
+make verify-cache                              # 308/308 OK
+```
+
+The build script (`scripts/build_zenodo_bundle.py`) is reproducible: file
+order, mtimes, and ownership are normalised so two builds of the same
+`data/manifest.sha256` produce byte-identical tarballs (covered by
+`scripts/tests/test_build_zenodo_bundle.py::TestBuild::test_is_reproducible`).
+A `BUNDLE_INFO.txt` provenance header at the top of the tarball records
+the source git commit, build time (UTC), file count, total bytes, and the
+embedded manifest's SHA256.
+
+**Bundle contents** (~1.19 GB unpacked, ~0.98 GB compressed):
 
 | Path inside bundle | Size | Source phase | Why included |
 |---|---|---|---|
@@ -176,8 +202,14 @@ Phase 10 A5 — see `docs/plan.md`)*.
 | `simulated/calibration_final/` | 11 MB | Phase 3 | Source data for KS-test vs NordicDat |
 | `simulated/phase1_demo/`, `phase2_demo/`, `phase2_sweep/` | ~0.5 MB | Phase 1–2 | Chapter 1–2 methodology illustration figures |
 | `processed/` (entire tree) | 135 MB | Phase 3, 5–11 | All tables/CSV/JSON/PNGs for every benchmark, seed variant, dense_urban, external validation |
-| `manifest.sha256` | 50 KB | tooling | per-file SHA256 integrity check (`make verify-cache`, `sha256sum -c`) |
-| `repo_snapshot.tar.gz` | ~2 MB | tooling | the git tree at defense commit, for citation stability |
+| `data/manifest.sha256` | 67 KB | tooling | per-file SHA256 integrity check (`make verify-cache`, `sha256sum -c`) |
+| `docs/zenodo_metadata.json` | 3 KB | tooling | self-describing deposit metadata (also uploaded to the Zenodo form) |
+| `BUNDLE_INFO.txt` | < 1 KB | tooling | provenance header (git commit, build UTC, file count, manifest sha) |
+
+Repo source is **not** bundled — the canonical source archive is the git
+tag (`vX.Y.Z`) on the GitHub repository linked in
+`docs/zenodo_metadata.json::related_identifiers`. This keeps the bundle
+focused on data and decouples deposit revisions from source-code commits.
 
 **Not included** (deliberately):
 - Third-party raw datasets (NordicDat, Bangladesh) — redistributed by their
@@ -188,9 +220,9 @@ Phase 10 A5 — see `docs/plan.md`)*.
   `anomaly_smoke_*`, `*_quickcheck/`. These do not back any thesis figure.
 - `data/external/` — out of scope (3GPP PDFs etc., obtained elsewhere).
 
-**Bundle generation**: maintainers run `make zenodo-bundle` (Phase 10 A5) to
-produce `dist/thesis_artifacts_v1.0.0.tar.gz` for upload. See
-`docs/zenodo_upload.md` for the per-release Zenodo workflow.
+For the per-release Zenodo workflow (DOI reservation → upload → publication
+→ DOI back-fill into the repo), see
+[`docs/zenodo_upload.md`](zenodo_upload.md).
 
 **Manifest commit cadence (maintainer note).** `data/manifest.sha256` is
 committed to the repo (not gitignored) so reviewers see the canonical SHA
@@ -216,7 +248,7 @@ After running Profile A/B/C, the following must hold:
 
 ```bash
 # Python unit tests (no simulator required):
-make pytest                                  # 382 passed
+make pytest                                  # 396 passed
 
 # MATLAB unit tests (Profile C only):
 make test                                    # 88/88 PASS
@@ -264,7 +296,8 @@ all suffice; the simulator does not exercise any commercial-only feature.
 
 | Date | Reproducibility version | Notes |
 |---|---|---|
-| 2026-06-06 | v0.1 (this doc) | Initial Tier 1 reproducibility package: lockfile (A2), MATLAB pin (A4). Docker (A1), `make all-*` (A3), and Zenodo bundle (A5) tracked separately in `docs/plan.md` Phase 10. |
+| 2026-06-06 | v0.1 | Initial Tier 1 reproducibility package: lockfile (A2), MATLAB pin (A4). Docker (A1), `make all-*` (A3), and Zenodo bundle (A5) tracked separately in `docs/plan.md` Phase 10. |
+| 2026-06-06 | v0.2 (this doc) | All five Tier 1 sub-items complete: Dockerfile + `make all-from-cache` + `make all-full` + `data/manifest.sha256` + `scripts/build_zenodo_bundle.py` + `scripts/fetch_zenodo_bundle.py` + `docs/zenodo_metadata.json` + `docs/zenodo_upload.md`. Only outstanding item is minting the real Zenodo DOI at thesis submission. 396 Python tests passing. |
 
 This document supersedes any version-pin language in earlier ADRs (ADR-1,
 ADR-7) for the purposes of reproducibility.

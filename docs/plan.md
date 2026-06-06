@@ -701,13 +701,24 @@ Artifacts:
 **Acceptance (Phase 11 — global):** all three Iter A/B/C acceptance bars met → Chapter 11 (External Validation) populated → defense answer "how do you know this generalizes?" is replaced with a multi-dimensional empirical answer instead of a methodological hand-wave.
 
 ### Phase 10 — Writing + reproducibility (2 weeks) — *runs after Phase 11*
+
+**Tier 1 reproducibility package (Phase 10 A1–A5) — COMPLETE 2026-06-06.**
+
+- [x] **A1**: Hybrid Python-only Docker (`docker/Dockerfile` + `docker/entrypoint.sh` + `docker/README.md`). Image `thesis-repro` builds in ~3.5 min, runs `make pytest` and `make all-from-cache` against host-mounted `data/`.
+- [x] **A2**: Hash-locked Python dependencies (`requirements.in` source + `requirements.txt` with 126 SHA256-pinned packages + `make pip-compile` regen target).
+- [x] **A3**: `make all-full` (Phase 1→11 from scratch, MATLAB required, ~3.5–4 h) and `make all-from-cache` (Python-only on cached deposit, ~30 min). Plus `make manifest` + `make verify-cache` against committed `data/manifest.sha256` (308 entries, sha256sum-compatible).
+- [x] **A4**: MATLAB version pinned in `README.md` + `docs/reproducibility.md` (R2023b build 23.2.0.2365128 + four required toolboxes at v23.2; Compiler route documented as rejected with rationale).
+- [x] **A5**: Zenodo bundle tooling (`scripts/build_zenodo_bundle.py` produces reproducible 980 MB tarball; `scripts/fetch_zenodo_bundle.py` resolves DOI → download → SHA256-verify → unpack; `docs/zenodo_metadata.json` ships the deposit metadata; `docs/zenodo_upload.md` documents the per-release human workflow). Real DOI is minted at thesis submission; placeholder `10.5281/zenodo.XXXXXXX` swapped in via `grep -rn XXXXXXX`.
+
+**Three reviewer profiles documented in `docs/reproducibility.md`:**
+- Profile A (no MATLAB): `fetch_zenodo_bundle` → `make all-from-cache` → ~30 min.
+- Profile B (Docker): `docker run thesis-repro …` → identical pipeline, no host install.
+- Profile C (full MATLAB): `make all-full` → ~3.5–4 h end-to-end regeneration.
+
+**Pending (writing side):**
 - [ ] Thesis chapters 1–11 drafted (chapter 11 = external validation)
 - [ ] Abstract + conclusion
-- [ ] **Hybrid Docker** (Python-only): reviewers reproduce all Chapter 5–9 + 11 figures from Zenodo-archived parquets without MATLAB.
-- [ ] `make all` target chains Phase 1 → 11 reproductions end-to-end.
-- [ ] `requirements.txt` pinned with hash-locked versions (`pip-compile`).
-- [ ] MATLAB version pinned in README (R2023b + toolboxes listed; Compiler upgrade path documented as optional Yol 1).
-- [ ] Zenodo upload (datasets + repo snapshot + DOI for thesis citation).
+- [ ] Zenodo upload executed (publish reserved DOI, swap placeholders in repo, push v1.0.0 tag).
 - [ ] *(Optional)* Workshop paper draft.
 
 ---

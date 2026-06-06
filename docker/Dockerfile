@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # ---------------------------------------------------------------------------
-# Hybrid Python-only reproducibility image for the simulator-track thesis.
+# Hybrid Python-only reproducibility image for the thesis.
 #
 # The image ships:
 #   - Python 3.12.3 (matches host pin documented in docs/reproducibility.md),

@@ -27,15 +27,20 @@ Three reviewer profiles, copy-paste recipes for each in
 - **Profile C — full from-scratch** (requires MATLAB R2023b): `make all-full`
   — Phase 1 → 11 end-to-end, ~3–4 h wall clock.
 
-Cached simulator artifacts (~1.2 GB unpacked, ~0.9 GB compressed) plus the
-SHA256 manifest are deposited at `https://doi.org/10.5281/zenodo.XXXXXXX`
-(placeholder until thesis submission; workflow lands in Phase 10 A5). The
-bundle covers all 5 seeded `timeline_medium` variants, `timeline_dense_urban`,
-the Phase 8 surrogate sweep, the Phase 3 calibration source, and every
-Phase 5–11 processed output — so Profile A reviewers can full-regen
-Chapter 11 cross-seed without MATLAB. The canonical SHA256 table for the
-deposit is also committed in-repo as [`data/manifest.sha256`](data/manifest.sha256) —
-verify your local cache with `make verify-cache` (or `sha256sum -c`).
+Cached simulator artifacts (~1.25 GB unpacked, ~0.98 GB compressed, 308
+files) plus the SHA256 manifest are deposited at
+`https://doi.org/10.5281/zenodo.XXXXXXX` (placeholder until thesis
+submission — real DOI is reserved at deposit cut, then back-filled via
+`grep -rn XXXXXXX`). The bundle covers all 5 seeded `timeline_medium`
+variants, `timeline_dense_urban`, the Phase 8 surrogate sweep, the
+Phase 3 calibration source, and every Phase 5–11 processed output — so
+Profile A reviewers can full-regen Chapter 11 cross-seed without MATLAB.
+The canonical SHA256 table for the deposit is also committed in-repo as
+[`data/manifest.sha256`](data/manifest.sha256) — verify your local cache
+with `make verify-cache` (or `sha256sum -c`). Maintainers build the
+deposit tarball with `make zenodo-bundle`; reviewers fetch + verify it
+with `python -m scripts.fetch_zenodo_bundle --doi …`. Full per-release
+workflow in [`docs/zenodo_upload.md`](docs/zenodo_upload.md).
 
 ## Repo layout
 
@@ -112,7 +117,7 @@ make matlab-check
 make help                  # show all targets
 make matlab-check          # verify required toolboxes are installed + licensed
 make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
-make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest: 382 tests)
+make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest + zenodo bundle: 396 tests)
 make demo                  # Phase 1 channel/measurement smoke test
 make demo-ho               # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
@@ -140,7 +145,7 @@ Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-382 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest)
+396 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest + zenodo bundle)
 ```
 
 Expected artifacts:
@@ -306,6 +311,6 @@ TBD — pick a license before public release. Cite 3GPP TS/TR documents and data
 | 8. Config–performance surrogate                 | **Iter A done** (HistGB point + Conformal Quantile GB on `sweep_config_perf.parquet` (360 rows × 3 mobility KPIs); group-5-fold CV + inverse query @ median deployment. All 4 acceptance criteria PASS: HOSR MAE = 0.043 (target ≤ 0.05), R² = {0.96, 0.95, 0.72}, conformal 90 % PI empirical coverage = {0.84, 0.72, 0.89} (target ≥ 0.70). Headline finding: **naive quantile GB intervals are systematically too narrow under grouped CV** (~25 pp under-coverage for RLF_rate); **split-conformal calibration recovers** the coverage guarantee across all 3 targets. 12 / 36 inverse-query recommendations satisfy HOSR ≥ 0.95 ∧ RLF ≤ 0.05 ∧ PP ≤ 0.10; top-3 all use TTT = 256 ms.) 72 config_perf tests green. |
 | 9. End-to-end demo                              | **Iter A done** (full pipeline replay on `timeline_medium`: PCA-AE + ADWIN drift detector + filtered retrain + HistGB / ConformalQuantileGB surrogate; 7 drift-triggered interventions in 1 800 s, 9 s walk-forward + 55 s total wall clock. All 4 acceptance criteria PASS. Headline finding: **operator's "bad config push" (D-4 #2 raised TTT 256 → 1024 at t = 780 s) detected within 40 s, surrogate inverse-query recommended (TTT=256, hyst=3, A3=3) recovery config worth +0.619 predicted HOSR uplift in the prevailing deployment context** (0.371 → 0.990). Other 6 interventions are conservative micro-adjustments — system does not over-react when current config is sane. Single 4-panel `end_to_end_moneyshot.png` is the Chapter 9 defense plate.) 35 demo tests green. |
 | 11. External validation                         | **Iter A + B + C done** (Iter A cross-seed `timeline_medium` 5 seeds: 5 / 6 PASS; Iter B cross-scenario `timeline_dense_urban` 37 cells × 24 UEs: **5 / 5 PASS**; Iter C NordicDat face validity 727 h real 5G-NSA fleet telemetry: **3 / 3 G1-G3 PASS**. Headline findings: (a) Phase 9 HOSR uplift reproduces to 4 decimals across seeds (+0.6214 ± 0.0001) and **scales to +1.2413 in dense_urban**; (b) filtered > naive replicates in both scenarios; (c) drift volume CV = 0.04 + identical winner (Energy-batch) across all scenarios + seeds; (d) **Simpson's paradox is scenario-conditional** — per-type-mean winner splits across {LOF, OCSVM, MLP-AE} on medium tight top-cluster but resolves to clean IsoForest dominance on dense_urban, while overall pooled winner is IsoForest in BOTH scenarios; (e) **face-validity on 30 days of real op telemetry**: PCA-AE flags 1.2 % of eval windows (well under 10 % volume-sanity floor), peak at 13:00 commute hour (3.5 × the daily mean) is consistent with operational load shift — no precision/recall claim because no ground truth, disclaimer enforced by unit test. Iter B introduced the `--variant dense_urban` preset and the `cross_scenario_compare` comparator; Iter C uses fully self-supervised PCA-AE + ADWIN with no simulator-trained weights transferred.) 79 external-validation tests green. |
-| 10. Writing + reproducibility package           | planned (runs after Phase 11)       |
+| 10. Writing + reproducibility package           | **Tier 1 reproducibility COMPLETE** (Docker + lockfile + `make all-*` + manifest + Zenodo tooling); writing pending |
 
 See [`docs/plan.md`](docs/plan.md) for live, per-task status.
