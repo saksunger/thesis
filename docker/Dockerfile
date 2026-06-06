@@ -12,7 +12,7 @@
 # The image does NOT ship:
 #   - MATLAB (license-bound; see docs/reproducibility.md Section 5 for the
 #     rationale and Profile C for the full from-scratch path),
-#   - the cached simulator parquet (~600 MB; mounted at /app/data at run
+#   - the cached simulator parquet (~1.2 GB; mounted at /app/data at run
 #     time, fetched on demand from the Zenodo deposit by Phase 10 A5).
 #
 # Build:

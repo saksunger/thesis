@@ -59,17 +59,51 @@ INCLUDED_EXTENSIONS = frozenset({
     ".mat",
 })
 
+# Paths excluded from the canonical Zenodo bundle (and therefore from this
+# manifest). These are either superseded by later runs, smoke/quickcheck
+# artefacts, or Phase 3 intermediates whose final outputs already live in
+# data/processed/. Matched as a sub-path component anywhere under each root
+# (so `data/simulated/timeline_iter_b/...` matches `timeline_iter_b`).
+#
+# Keep this list aligned with the "Not included" section of
+# docs/reproducibility.md §3.
+DEFAULT_EXCLUDE_PATTERNS = (
+    "timeline_iter_b",
+    "timeline_short",
+    "calibration_baseline",
+    "calibration_sweep",
+    "anomaly_smoke_timeline_iter_b",
+    "anomaly_benchmark_iter_b_quickcheck",
+    "anomaly_benchmark_medium_quickcheck",
+)
+
 CHUNK_SIZE = 1 << 20  # 1 MiB streaming read
 
 
-def iter_files(repo_root: Path, roots: Iterable[str]) -> list[Path]:
+def _is_excluded(rel_path: str, patterns: Iterable[str]) -> bool:
+    """True if any pattern matches a path component of rel_path."""
+    parts = rel_path.split("/")
+    return any(pat in parts for pat in patterns)
+
+
+def iter_files(
+    repo_root: Path,
+    roots: Iterable[str],
+    exclude_patterns: Iterable[str] = DEFAULT_EXCLUDE_PATTERNS,
+) -> list[Path]:
     """Return a deterministic globally-sorted list of in-scope files.
 
     Sorts across all roots so the manifest order does not depend on the
     `roots` argument order — produces a stable diff target across
     runs even if the caller reorders the roots list.
+
+    `exclude_patterns` are matched as path components anywhere under each
+    root, so `"timeline_iter_b"` matches `data/simulated/timeline_iter_b/x.parquet`
+    but does NOT match `data/simulated/timeline_iter_b_v2/x.parquet` (full
+    component match).
     """
 
+    patterns = tuple(exclude_patterns)
     out: list[Path] = []
     for rel_root in roots:
         root = (repo_root / rel_root).resolve()
@@ -79,6 +113,9 @@ def iter_files(repo_root: Path, roots: Iterable[str]) -> list[Path]:
             if not p.is_file():
                 continue
             if p.suffix not in INCLUDED_EXTENSIONS:
+                continue
+            rel = p.relative_to(repo_root).as_posix()
+            if _is_excluded(rel, patterns):
                 continue
             out.append(p)
     out.sort(key=lambda p: p.relative_to(repo_root).as_posix())
@@ -160,8 +197,13 @@ def render_manifest(repo_root: Path, files: Iterable[Path]) -> str:
     return "\n".join(header_lines + body_lines) + ("\n" if body_lines else "")
 
 
-def generate(repo_root: Path, out_path: Path, roots: Iterable[str]) -> int:
-    files = iter_files(repo_root, roots)
+def generate(
+    repo_root: Path,
+    out_path: Path,
+    roots: Iterable[str],
+    exclude_patterns: Iterable[str] = DEFAULT_EXCLUDE_PATTERNS,
+) -> int:
+    files = iter_files(repo_root, roots, exclude_patterns)
     payload = render_manifest(repo_root, files)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(payload, encoding="ascii")
@@ -262,13 +304,19 @@ def main(argv: list[str] | None = None) -> int:
         "--roots", nargs="+", default=list(DEFAULT_ROOTS),
         help=f"Directories to walk for --generate (default: {' '.join(DEFAULT_ROOTS)}).",
     )
+    parser.add_argument(
+        "--exclude", nargs="*", default=list(DEFAULT_EXCLUDE_PATTERNS),
+        metavar="PATTERN",
+        help="Path components to exclude (default: superseded / smoke / "
+             "Phase 3 intermediate dirs; see docs/reproducibility.md §3).",
+    )
 
     args = parser.parse_args(argv)
     repo_root = args.repo_root.resolve()
     out_path = args.out or args.manifest
 
     if args.generate:
-        return generate(repo_root, out_path, args.roots)
+        return generate(repo_root, out_path, args.roots, args.exclude)
     return verify(repo_root, args.manifest)
 
 

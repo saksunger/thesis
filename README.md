@@ -27,10 +27,14 @@ Three reviewer profiles, copy-paste recipes for each in
 - **Profile C — full from-scratch** (requires MATLAB R2023b): `make all-full`
   — Phase 1 → 11 end-to-end, ~3–4 h wall clock.
 
-Cached simulator artifacts (~600 MB) plus the manifest+SHA256 are deposited at
-`https://doi.org/10.5281/zenodo.XXXXXXX` (placeholder until thesis submission;
-workflow lands in Phase 10 A5). The canonical SHA256 table for that deposit
-is also committed in-repo as [`data/manifest.sha256`](data/manifest.sha256) —
+Cached simulator artifacts (~1.2 GB unpacked, ~0.9 GB compressed) plus the
+SHA256 manifest are deposited at `https://doi.org/10.5281/zenodo.XXXXXXX`
+(placeholder until thesis submission; workflow lands in Phase 10 A5). The
+bundle covers all 5 seeded `timeline_medium` variants, `timeline_dense_urban`,
+the Phase 8 surrogate sweep, the Phase 3 calibration source, and every
+Phase 5–11 processed output — so Profile A reviewers can full-regen
+Chapter 11 cross-seed without MATLAB. The canonical SHA256 table for the
+deposit is also committed in-repo as [`data/manifest.sha256`](data/manifest.sha256) —
 verify your local cache with `make verify-cache` (or `sha256sum -c`).
 
 ## Repo layout
@@ -108,7 +112,7 @@ make matlab-check
 make help                  # show all targets
 make matlab-check          # verify required toolboxes are installed + licensed
 make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
-make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest: 379 tests)
+make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest: 382 tests)
 make demo                  # Phase 1 channel/measurement smoke test
 make demo-ho               # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)
@@ -136,7 +140,7 @@ Expected output of `make test` and `make pytest`:
 
 ```
 === 88/88 PASS ===   # MATLAB
-379 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest)
+382 passed           # Python (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest)
 ```
 
 Expected artifacts:

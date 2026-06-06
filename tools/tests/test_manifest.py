@@ -93,6 +93,45 @@ class TestIterFiles:
         out = M.iter_files(repo, ["data/simulated", "data/processed"])
         assert len(out) == 1
 
+    def test_default_exclude_patterns_filter_known_dirs(self, tmp_path: Path) -> None:
+        """timeline_iter_b et al. are dropped by the default exclude list."""
+        repo = _make_repo(tmp_path, {
+            "data/simulated/timeline_medium/x.parquet": b"keep",
+            "data/simulated/timeline_iter_b/x.parquet": b"drop",
+            "data/simulated/timeline_short/x.parquet": b"drop",
+            "data/simulated/calibration_baseline/x.parquet": b"drop",
+            "data/simulated/calibration_sweep/sub/x.parquet": b"drop",
+            "data/processed/anomaly_benchmark_medium_quickcheck/x.csv": b"drop",
+            "data/processed/anomaly_benchmark_timeline_medium/x.csv": b"keep",
+        })
+        out = M.iter_files(repo, ["data/simulated", "data/processed"])
+        rels = sorted(p.relative_to(repo).as_posix() for p in out)
+        assert rels == [
+            "data/processed/anomaly_benchmark_timeline_medium/x.csv",
+            "data/simulated/timeline_medium/x.parquet",
+        ]
+
+    def test_custom_exclude_overrides_default(self, tmp_path: Path) -> None:
+        """Caller can pass exclude_patterns=[] to keep everything."""
+        repo = _make_repo(tmp_path, {
+            "data/simulated/timeline_iter_b/x.parquet": b"v",
+        })
+        out_default = M.iter_files(repo, ["data/simulated"])
+        assert out_default == []
+
+        out_no_excl = M.iter_files(repo, ["data/simulated"], exclude_patterns=[])
+        assert len(out_no_excl) == 1
+
+    def test_exclude_requires_full_component_match(self, tmp_path: Path) -> None:
+        """`timeline_short` must NOT match `timeline_short_v2`."""
+        repo = _make_repo(tmp_path, {
+            "data/simulated/timeline_short_v2/x.parquet": b"keep",
+            "data/simulated/timeline_short/x.parquet": b"drop",
+        })
+        out = M.iter_files(repo, ["data/simulated"])
+        rels = [p.relative_to(repo).as_posix() for p in out]
+        assert rels == ["data/simulated/timeline_short_v2/x.parquet"]
+
 
 # ---------------------------------------------------------------------------
 # sha256_file

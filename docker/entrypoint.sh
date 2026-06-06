@@ -31,7 +31,7 @@ Common commands:
   make all-from-cache                # Phase 10 A3 — full Python-side regen
 
 If /app/data is empty, fetch the cached simulator artifacts:
-  python scripts/fetch_zenodo_bundle.py     # Phase 10 A5, ~600 MB
+  python scripts/fetch_zenodo_bundle.py     # Phase 10 A5, ~1.2 GB
 ============================================================================
 BANNER
 fi

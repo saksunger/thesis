@@ -93,7 +93,7 @@ git clone https://github.com/<owner>/thesis.git && cd thesis
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install --require-hashes -r requirements.txt
 
-# Pull the cached simulator artifacts (~600 MB) from Zenodo:
+# Pull the cached simulator artifacts (~1.2 GB) from Zenodo:
 python scripts/fetch_zenodo_bundle.py        # Phase 10 A5 — see Section 3
 
 # (optional) Pull the NordicDat segment for Phase 11C:
@@ -165,25 +165,28 @@ A Zenodo deposit accompanies this thesis to provide:
 DOI minted at thesis submission; per-release upload workflow lands in
 Phase 10 A5 — see `docs/plan.md`)*.
 
-**Bundle manifest** (~600 MB):
+**Bundle manifest** (~1.19 GB unpacked, ~0.9 GB compressed):
 
-| Path inside bundle | Source phase | Why included |
-|---|---|---|
-| `simulated/timeline_medium/{samples,events,ground_truth_*}.parquet` | Phase 4 | Primary timeline for Chapter 5–9 + 11A |
-| `simulated/timeline_dense_urban/{samples,events,ground_truth_*}.parquet` | Phase 11 Iter B | Cross-scenario validation |
-| `simulated/sweep_static/sweep_config_perf.parquet` | Phase 4c | Surrogate training matrix (Chapter 8) |
-| `processed/anomaly_benchmark_timeline_medium/` | Phase 5 | Chapter 5 tables + figures |
-| `processed/drift_benchmark_timeline_medium/` | Phase 6 | Chapter 6 tables + figures |
-| `processed/adaptive_benchmark_timeline_medium/` | Phase 7 | Chapter 7 tables + figures |
-| `processed/end_to_end_demo_timeline_medium/` | Phase 9 | Chapter 9 defense plate |
-| `processed/surrogate_benchmark/` | Phase 8 | Chapter 8 tables + figures |
-| `processed/external_validation/` | Phase 11 (A+B+C) | Chapter 11 tables + figures |
-| `manifest.sha256` | tooling | per-file integrity check, verified by `make verify-cache` |
-| `repo_snapshot.tar.gz` | tooling | the git tree at defense commit, for citation stability |
+| Path inside bundle | Size | Source phase | Why included |
+|---|---|---|---|
+| `simulated/timeline_medium/` | 131 MB | Phase 4c | Primary 30-phase production timeline (Chapter 5–9, 11A baseline) |
+| `simulated/timeline_medium_seed{42..46}/` | 5 × 131 MB | Phase 11 Iter A | Cross-seed full re-runnability without MATLAB |
+| `simulated/timeline_dense_urban/` | 260 MB | Phase 11 Iter B | Cross-scenario validation |
+| `simulated/sweep_static/sweep_config_perf.parquet` | 36 KB | Phase 4c | Phase 8 surrogate training matrix (360 rows) |
+| `simulated/calibration_final/` | 11 MB | Phase 3 | Source data for KS-test vs NordicDat |
+| `simulated/phase1_demo/`, `phase2_demo/`, `phase2_sweep/` | ~0.5 MB | Phase 1–2 | Chapter 1–2 methodology illustration figures |
+| `processed/` (entire tree) | 135 MB | Phase 3, 5–11 | All tables/CSV/JSON/PNGs for every benchmark, seed variant, dense_urban, external validation |
+| `manifest.sha256` | 50 KB | tooling | per-file SHA256 integrity check (`make verify-cache`, `sha256sum -c`) |
+| `repo_snapshot.tar.gz` | ~2 MB | tooling | the git tree at defense commit, for citation stability |
 
-**Not included** (deliberately): raw third-party datasets (NordicDat,
-Bangladesh) — these are redistributed by their original authors under their
-own licenses. Reviewers download them once via `data/raw_public/README.md`.
+**Not included** (deliberately):
+- Third-party raw datasets (NordicDat, Bangladesh) — redistributed by their
+  original authors under their own licenses. Reviewers download once via
+  `data/raw_public/README.md`.
+- Superseded / intermediate simulator runs: `timeline_iter_b/`,
+  `timeline_short/`, `calibration_baseline/`, `calibration_sweep/`,
+  `anomaly_smoke_*`, `*_quickcheck/`. These do not back any thesis figure.
+- `data/external/` — out of scope (3GPP PDFs etc., obtained elsewhere).
 
 **Bundle generation**: maintainers run `make zenodo-bundle` (Phase 10 A5) to
 produce `dist/thesis_artifacts_v1.0.0.tar.gz` for upload. See
@@ -213,7 +216,7 @@ After running Profile A/B/C, the following must hold:
 
 ```bash
 # Python unit tests (no simulator required):
-make pytest                                  # 379 passed
+make pytest                                  # 382 passed
 
 # MATLAB unit tests (Profile C only):
 make test                                    # 88/88 PASS

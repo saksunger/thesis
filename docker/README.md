@@ -67,7 +67,7 @@ docker run --rm \
   make pytest
 ```
 
-Expected output tail: `379 passed, 2 warnings in ~35s`. The 2 warnings are
+Expected output tail: `382 passed, 2 warnings in ~35s`. The 2 warnings are
 the documented sklearn PCA divide-by-zero on a degenerate Phase 11C
 NordicDat smoke fixture; harmless.
 
@@ -110,7 +110,7 @@ wall clock: ~30 min on a 4-core x86_64.
 
 ## 3. Fetching the cached simulator output
 
-The container does not ship the ~600 MB cached simulator parquet (that would
+The container does not ship the ~1.2 GB cached simulator parquet (that would
 bloat the image past Docker Hub limits and re-locks reviewers to a single
 deposit version). Instead, pull it on demand once per host:
 
