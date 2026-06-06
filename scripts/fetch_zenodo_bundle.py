@@ -49,21 +49,90 @@ DEFAULT_CACHE_DIR = Path(".cache/zenodo")
 DEFAULT_REPO_ROOT = Path.cwd()
 DEFAULT_DOI: str | None = None  # set when the canonical deposit is minted
 
+# Zenodo has two parallel deployments. Production DOIs use the 10.5281
+# prefix and live at zenodo.org; the throwaway test environment uses the
+# 10.5072 prefix and lives at sandbox.zenodo.org. Both expose the same
+# REST API shape, so we just rewrite the host based on the DOI prefix
+# (or take an explicit `--sandbox` / `sandbox.zenodo.org` URL).
+ZENODO_PROD_HOST = "zenodo.org"
+ZENODO_SANDBOX_HOST = "sandbox.zenodo.org"
+DOI_PREFIX_PROD = "10.5281/zenodo."
+DOI_PREFIX_SANDBOX = "10.5072/zenodo."
+
 
 def _sha256_file(path: Path, chunk: int = 1 << 20) -> str:
-    h = hashlib.sha256()
+    return _hash_file(path, "sha256", chunk)
+
+
+def _md5_file(path: Path, chunk: int = 1 << 20) -> str:
+    return _hash_file(path, "md5", chunk)
+
+
+def _hash_file(path: Path, algo: str, chunk: int = 1 << 20) -> str:
+    h = hashlib.new(algo)
     with path.open("rb") as f:
         while block := f.read(chunk):
             h.update(block)
     return h.hexdigest()
 
 
-def _resolve_doi_to_files_api(doi: str) -> tuple[str, str]:
-    """Resolve a Zenodo DOI -> (download URL, expected SHA256).
+def _parse_zenodo_checksum(field: str) -> tuple[str, str]:
+    """Split Zenodo's `"<algo>:<hex>"` checksum string into (algo, hex).
+
+    Zenodo's REST API currently returns MD5 only for most deposits
+    (the SHA256 column is not populated in the public payload), so the
+    fetch script must accept MD5 as the integrity primitive at the
+    transport layer. Per-file SHA256 verification then happens via the
+    in-bundle `data/manifest.sha256` after extraction (`make verify-cache`).
+    """
+    if ":" not in field:
+        raise ValueError(f"unrecognised Zenodo checksum format: {field!r}")
+    algo, hex_ = field.split(":", 1)
+    algo = algo.strip().lower()
+    hex_ = hex_.strip().lower()
+    if algo not in {"md5", "sha256"}:
+        raise ValueError(f"unsupported Zenodo checksum algorithm: {algo!r}")
+    expected_len = 32 if algo == "md5" else 64
+    if len(hex_) != expected_len:
+        raise ValueError(
+            f"unexpected {algo} hex length {len(hex_)} (expected {expected_len})"
+        )
+    return algo, hex_
+
+
+def _resolve_host(doi: str, force_sandbox: bool = False) -> str:
+    """Pick zenodo.org vs sandbox.zenodo.org from the DOI prefix.
+
+    `force_sandbox` overrides the prefix (useful when a 10.5072 sandbox
+    DOI somehow lacks the prefix, or when testing the resolver itself).
+    """
+    if force_sandbox:
+        return ZENODO_SANDBOX_HOST
+    if doi.startswith(DOI_PREFIX_SANDBOX):
+        return ZENODO_SANDBOX_HOST
+    if "sandbox.zenodo.org" in doi:
+        return ZENODO_SANDBOX_HOST
+    return ZENODO_PROD_HOST
+
+
+def _resolve_doi_to_files_api(
+    doi: str, force_sandbox: bool = False,
+) -> tuple[str, str, str]:
+    """Resolve a Zenodo DOI -> (download URL, checksum algorithm, hex digest).
 
     Calls the public Zenodo REST API to find the first .tar.gz attachment
-    on the record and returns its download URL + checksum.
+    on the record and returns its download URL + checksum. Routes to
+    production or sandbox based on the DOI prefix (10.5281 -> production,
+    10.5072 -> sandbox), with `force_sandbox=True` as an explicit override.
+
+    Zenodo currently exposes MD5 for most deposits; SHA256 is not always
+    in the public payload. We use whatever the API returns for transport-
+    layer integrity. The bundle's per-file SHA256 manifest
+    (`data/manifest.sha256`, also inside the tarball) is the authoritative
+    integrity primitive once unpacked.
     """
+    host = _resolve_host(doi, force_sandbox=force_sandbox)
+
     # Accept both bare DOIs ("10.5281/zenodo.123") and full URLs.
     doi = doi.strip()
     if doi.startswith("http"):
@@ -71,14 +140,15 @@ def _resolve_doi_to_files_api(doi: str) -> tuple[str, str]:
             record_id = doi.rstrip("/").split("/")[-1]
         else:
             raise ValueError(f"unrecognised Zenodo URL: {doi}")
-    elif doi.startswith("10.5281/zenodo."):
+    elif doi.startswith(DOI_PREFIX_PROD) or doi.startswith(DOI_PREFIX_SANDBOX):
         record_id = doi.split(".")[-1]
     else:
         raise ValueError(
-            "DOI must be either '10.5281/zenodo.<id>' or a zenodo.org URL"
+            "DOI must be either '10.5281/zenodo.<id>' (production), "
+            "'10.5072/zenodo.<id>' (sandbox), or a zenodo.org URL"
         )
 
-    api_url = f"https://zenodo.org/api/records/{record_id}"
+    api_url = f"https://{host}/api/records/{record_id}"
     print(f"fetch_zenodo_bundle: resolving {api_url}", file=sys.stderr)
     with urllib.request.urlopen(api_url, timeout=30) as resp:  # noqa: S310
         payload = json.loads(resp.read().decode("utf-8"))
@@ -89,19 +159,14 @@ def _resolve_doi_to_files_api(doi: str) -> tuple[str, str]:
         raise RuntimeError(f"no .tar.gz attachment on Zenodo record {record_id}")
     chosen = tarballs[0]
     url = chosen["links"]["self"]
-    sha256_field = chosen.get("checksum") or ""
-    if sha256_field.startswith("sha256:"):
-        sha256_field = sha256_field[len("sha256:") :]
-    if sha256_field.startswith("md5:"):
+    checksum_field = chosen.get("checksum") or ""
+    if not checksum_field:
         raise RuntimeError(
-            "Zenodo record exposes md5 only; SHA256 mismatch verification "
-            "is not implementable. Re-deposit with SHA256 enabled."
+            f"Zenodo record {record_id} did not return a checksum for "
+            f"{chosen.get('key')!r}"
         )
-    if len(sha256_field) != 64:
-        raise RuntimeError(
-            f"unexpected SHA256 length from Zenodo: {sha256_field!r}"
-        )
-    return url, sha256_field.lower()
+    algo, hex_digest = _parse_zenodo_checksum(checksum_field)
+    return url, algo, hex_digest
 
 
 def _stream_download(url: str, out_path: Path) -> None:
@@ -129,14 +194,21 @@ def _stream_download(url: str, out_path: Path) -> None:
 
 
 def _unpack(tarball: Path, repo_root: Path) -> int:
-    """Unpack tarball at repo_root. Returns number of files extracted."""
+    """Unpack tarball at repo_root. Returns number of files extracted.
+
+    Uses tarfile's ``filter="data"`` extraction policy (Python 3.12+),
+    which is the future default in 3.14 and rejects absolute paths,
+    symlinks pointing outside the destination, and other unsafe member
+    types. We additionally pre-screen members to (a) block ``..`` path
+    components and absolute paths upfront with a clearer error and
+    (b) skip non-regular entries that the bundle never contains.
+    """
     with tarfile.open(tarball, mode="r:gz") as tar:
         members = [m for m in tar.getmembers() if m.isfile()]
         for m in members:
-            # Defensive: block path traversal.
             if m.name.startswith("/") or ".." in Path(m.name).parts:
                 raise RuntimeError(f"refusing to extract unsafe path: {m.name}")
-        tar.extractall(repo_root, members=members)
+        tar.extractall(repo_root, members=members, filter="data")
     return len(members)
 
 
@@ -170,26 +242,39 @@ def main(argv: list[str] | None = None) -> int:
         "--repo-root", type=Path, default=DEFAULT_REPO_ROOT,
         help="Repo root (the tarball unpacks at this directory).",
     )
+    parser.add_argument(
+        "--sandbox", action="store_true",
+        help="Force the sandbox.zenodo.org host (auto-detected from "
+             "DOI prefix 10.5072; this flag is only needed when --doi "
+             "is omitted/non-standard).",
+    )
     args = parser.parse_args(argv)
 
     repo_root = args.repo_root.resolve()
 
     # Step 1: figure out where the tarball will come from.
+    # `expected` is a (algorithm, hex) pair or None; algorithm is either
+    # "sha256" or "md5" depending on what Zenodo / the user provided.
+    expected: tuple[str, str] | None
     if args.local is not None:
         local_path = args.local.resolve()
         if not local_path.is_file():
             print(f"--local file not found: {local_path}", file=sys.stderr)
             return 2
         tarball = local_path
-        expected_sha = args.sha256
+        expected = ("sha256", args.sha256.lower()) if args.sha256 else None
     else:
         if args.url:
             if not args.sha256:
                 print("--url requires --sha256 for integrity verification", file=sys.stderr)
                 return 2
-            url, expected_sha = args.url, args.sha256.lower()
+            url = args.url
+            expected = ("sha256", args.sha256.lower())
         elif args.doi:
-            url, expected_sha = _resolve_doi_to_files_api(args.doi)
+            url, algo, hex_digest = _resolve_doi_to_files_api(
+                args.doi, force_sandbox=args.sandbox,
+            )
+            expected = (algo, hex_digest)
         else:
             print(
                 "no source: pass --doi, --url+--sha256, or --local.\n"
@@ -202,7 +287,11 @@ def main(argv: list[str] | None = None) -> int:
 
         tarball = args.cache_dir / Path(url).name
         tarball.parent.mkdir(parents=True, exist_ok=True)
-        if tarball.exists() and _sha256_file(tarball) == expected_sha:
+        if (
+            tarball.exists()
+            and expected is not None
+            and _hash_file(tarball, expected[0]) == expected[1]
+        ):
             print(f"fetch_zenodo_bundle: cache hit at {tarball}", file=sys.stderr)
         else:
             try:
@@ -211,20 +300,36 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"download failed: {exc}", file=sys.stderr)
                 return 1
 
-    # Step 2: SHA256 verify (if we have an expected hash).
-    if expected_sha is not None:
-        actual_sha = _sha256_file(tarball)
-        if actual_sha != expected_sha:
+    # Step 2: transport-layer integrity check (matches whatever Zenodo
+    # exposed - sha256 if available, md5 otherwise). Per-file SHA256
+    # verification still runs after extraction via the in-bundle
+    # `data/manifest.sha256` (`make verify-cache`).
+    if expected is not None:
+        algo, expected_hex = expected
+        actual_hex = _hash_file(tarball, algo)
+        if actual_hex != expected_hex:
             print(
-                f"SHA256 mismatch!\n  expected: {expected_sha}\n  actual  : {actual_sha}",
+                f"{algo.upper()} mismatch!\n"
+                f"  expected: {expected_hex}\n  actual  : {actual_hex}",
                 file=sys.stderr,
             )
             return 1
-        print(f"fetch_zenodo_bundle: SHA256 OK ({actual_sha[:12]}...)", file=sys.stderr)
+        print(
+            f"fetch_zenodo_bundle: {algo.upper()} OK ({actual_hex[:12]}...)",
+            file=sys.stderr,
+        )
+        if algo != "sha256":
+            print(
+                f"fetch_zenodo_bundle: note - Zenodo exposed {algo.upper()} only; "
+                "run `make verify-cache` to confirm per-file SHA256 from "
+                "`data/manifest.sha256`.",
+                file=sys.stderr,
+            )
     else:
         print(
-            "WARNING: no SHA256 provided; skipping integrity verification "
-            "(use --sha256 in production).",
+            "WARNING: no checksum provided; skipping transport-layer "
+            "integrity check (run `make verify-cache` to verify per-file "
+            "SHA256 from the in-bundle manifest).",
             file=sys.stderr,
         )
 
