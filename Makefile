@@ -42,7 +42,7 @@ CALIB_SEED      ?= 999
 # Phase 4 timeline: override with: make sim TIMELINE=timeline_medium
 TIMELINE      ?= timeline_short
 
-.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo anomaly drift adaptive surrogate end2end clean
+.PHONY: help all matlab-check test pytest demo demo-ho sweep-ttt sweep-static gen-timeline-medium gen-timeline-dense-urban eda calibrate-sim calibrate-sweep calibrate sim anomaly-smoke anomaly-benchmark drift-benchmark adaptive-benchmark surrogate-benchmark end2end-demo seed-replication seed-replication-aggregate seed-replication-all cross-scenario-compare nordicdat-face-validity anomaly drift adaptive surrogate end2end clean
 
 # Phase 4 Iter C sweep_static output dir
 SWEEP_STATIC_DIR := $(DATA_SIM)/sweep_static
@@ -96,6 +96,16 @@ help:
 	@echo "                  4-panel end_to_end_moneyshot.png (thesis defense plate)."
 	@echo "                  Default timeline: timeline_medium."
 	@echo ""
+	@echo "Phase 11 (external validation):"
+	@echo "  seed-replication           Iter A: regen 5 seeded timelines + run 4 pipelines each (~2.5 h)"
+	@echo "  seed-replication-aggregate Iter A: bootstrap CI + boxplot + E1..E5 acceptance check"
+	@echo "  seed-replication-all       Chained: orchestrator -> aggregator"
+	@echo "                  Override: SEEDS='42 100 200' SEED_BASE=timeline_medium"
+	@echo "  gen-timeline-dense-urban   Iter B: build timeline_dense_urban.json (37 cells, 24 UEs)"
+	@echo "  cross-scenario-compare     Iter B: compare base vs contrast timeline pipelines"
+	@echo "                             Override: CROSS_BASE=tl1 CROSS_CONTRAST=tl2"
+	@echo "  nordicdat-face-validity    Iter C: ADWIN+PCA-AE on NordicDat (~1 min, qualitative)"
+	@echo ""
 	@echo "Phase 9+ (placeholders):"
 	@echo "  drift           Drift detection benchmark"
 	@echo "  adaptive        Drift-aware adaptive framework"
@@ -118,7 +128,7 @@ test:
 		exit(double(any([r.Failed])))"
 
 pytest:
-	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ analysis/config_perf/tests/ analysis/demo/tests/ tools/tests/ -v
+	$(PYTHON) -m pytest analysis/anomaly/tests/ analysis/drift/tests/ analysis/adaptive/tests/ analysis/config_perf/tests/ analysis/demo/tests/ analysis/external_validation/tests/ tools/tests/ -v
 
 demo:
 	@mkdir -p $(FIG_DEMO_DIR)
@@ -210,6 +220,23 @@ gen-timeline-medium:
 		--description "Phase 4 Iter C production timeline: 30 phases x 60s. 2 instances per drift, 10 anomalies per type. UE positions carry over." \
 		--n-phases 30 --phase-duration-s 60 \
 		--master-seed 42 --n-ue 12 --area-m 1500 \
+		--variant default \
+		--carry-over-ues true \
+		--drifts-per-type 2 --anomalies-per-type 10 \
+		--head-baseline-phases 3 --tail-baseline-phases 3 \
+		--rng-seed 42
+
+# Phase 11 Iter B: dense-urban variant (3-tier hex, 24 UEs, 750 m area,
+# isd_m=350). Cross-scenario benchmark — see plan.md Phase 11.
+DENSE_URBAN_GEN_TARGET ?= simulator/+scenarios/timelines/timeline_dense_urban.json
+gen-timeline-dense-urban:
+	$(PYTHON) -m tools.gen_timeline \
+		--out $(DENSE_URBAN_GEN_TARGET) \
+		--timeline-id timeline_dense_urban \
+		--description "Phase 11 Iter B cross-scenario regime: 3-tier hex (37 cells), 24 UEs, 750 m area, isd_m=350. Same eval horizon as timeline_medium (30 x 60s)." \
+		--n-phases 30 --phase-duration-s 60 \
+		--master-seed 42 --n-ue 24 --area-m 750 \
+		--variant dense_urban \
 		--carry-over-ues true \
 		--drifts-per-type 2 --anomalies-per-type 10 \
 		--head-baseline-phases 3 --tail-baseline-phases 3 \
@@ -269,6 +296,48 @@ surrogate-benchmark:
 DEMO_TIMELINE ?= timeline_medium
 end2end-demo:
 	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.demo.run_demo --timeline $(DEMO_TIMELINE)
+
+# ---------------------------------------------------------------------------
+# Phase 11 — External validation
+# ---------------------------------------------------------------------------
+# Iter A: cross-seed replication. Runs every pipeline on 5 master_seed
+# variants of timeline_medium (structure held fixed). Idempotent and
+# resumable: outputs already present on disk are skipped.
+#
+# Wall clock for the full run is ~2.5 h (5 × 30 min ≈ MATLAB sim 6 min +
+# Python pipelines 24 min per seed). Override SEEDS to use fewer.
+SEEDS         ?= 42 43 44 45 46
+SEED_BASE     ?= timeline_medium
+seed-replication:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m experiments.run_seed_replication \
+		--base $(SEED_BASE) --seeds $(SEEDS)
+
+seed-replication-aggregate:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.external_validation.seed_robustness \
+		--in $(DATA_PROC)/external_validation/seed_replication_$(SEED_BASE).csv
+
+# Convenience: orchestrator + aggregator chained.
+seed-replication-all: seed-replication seed-replication-aggregate
+
+# Phase 11 Iter B - cross-scenario comparison.
+# Assumes both <base> and <contrast> timelines have been simulated +
+# run through anomaly/drift/adaptive/end2end benchmarks (e.g. via the
+# usual `make sim TIMELINE=...` + per-pipeline targets, or by reusing
+# `seed-replication` with `--seeds 42 --base <name>`).
+CROSS_BASE     ?= timeline_medium
+CROSS_CONTRAST ?= timeline_dense_urban
+cross-scenario-compare:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.external_validation.cross_scenario_compare \
+		--base $(CROSS_BASE) --contrast $(CROSS_CONTRAST)
+
+# Phase 11 Iter C - NordicDat face validity.
+NORDIC_OPERATOR ?= 1
+NORDIC_RAN      ?= 5G-NSA
+NORDIC_TRAIN_S  ?= 600
+nordicdat-face-validity:
+	PYTHONUNBUFFERED=1 $(PYTHON) -m analysis.external_validation.nordicdat_apply \
+		--operator $(NORDIC_OPERATOR) --ran $(NORDIC_RAN) \
+		--train-s $(NORDIC_TRAIN_S)
 
 # ---------------------------------------------------------------------------
 # Phase 9+ targets (placeholders)
