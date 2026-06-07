@@ -394,48 +394,48 @@ all: all-full
 # we abort before kicking off any expensive sim/analysis work.
 
 all-full: matlab-check pytest
-	$(MAKE) calibrate
-	$(MAKE) sim TIMELINE=timeline_medium
-	$(MAKE) sweep-static
-	$(MAKE) gen-timeline-dense-urban
-	$(MAKE) sim TIMELINE=timeline_dense_urban
-	$(MAKE) anomaly-benchmark TIMELINE=timeline_medium
-	$(MAKE) drift-benchmark    TIMELINE=timeline_medium
-	$(MAKE) adaptive-benchmark TIMELINE=timeline_medium
-	$(MAKE) surrogate-benchmark
-	$(MAKE) end2end-demo       TIMELINE=timeline_medium
-	$(MAKE) anomaly-benchmark  TIMELINE=timeline_dense_urban
-	$(MAKE) drift-benchmark    TIMELINE=timeline_dense_urban
-	$(MAKE) adaptive-benchmark TIMELINE=timeline_dense_urban
-	$(MAKE) end2end-demo       TIMELINE=timeline_dense_urban
-	$(MAKE) cross-scenario-compare \
+	"$(MAKE)" calibrate
+	"$(MAKE)" sim TIMELINE=timeline_medium
+	"$(MAKE)" sweep-static
+	"$(MAKE)" gen-timeline-dense-urban
+	"$(MAKE)" sim TIMELINE=timeline_dense_urban
+	"$(MAKE)" anomaly-benchmark TIMELINE=timeline_medium
+	"$(MAKE)" drift-benchmark    TIMELINE=timeline_medium
+	"$(MAKE)" adaptive-benchmark TIMELINE=timeline_medium
+	"$(MAKE)" surrogate-benchmark
+	"$(MAKE)" end2end-demo       TIMELINE=timeline_medium
+	"$(MAKE)" anomaly-benchmark  TIMELINE=timeline_dense_urban
+	"$(MAKE)" drift-benchmark    TIMELINE=timeline_dense_urban
+	"$(MAKE)" adaptive-benchmark TIMELINE=timeline_dense_urban
+	"$(MAKE)" end2end-demo       TIMELINE=timeline_dense_urban
+	"$(MAKE)" cross-scenario-compare \
 		CROSS_BASE=timeline_medium \
 		CROSS_CONTRAST=timeline_dense_urban
-	$(MAKE) seed-replication-all
+	"$(MAKE)" seed-replication-all
 	@if [ -d data/raw_public/nordicdat ]; then \
-	    $(MAKE) nordicdat-face-validity; \
+	    "$(MAKE)" nordicdat-face-validity; \
 	else \
 	    echo "[all-full] skipping nordicdat-face-validity: data/raw_public/nordicdat/ not present (see data/raw_public/README.md)"; \
 	fi
-	$(MAKE) manifest
+	"$(MAKE)" manifest
 	@echo "[all-full] complete. SHA256 manifest -> data/manifest.sha256"
 
 all-from-cache: verify-cache pytest
-	$(MAKE) anomaly-benchmark  TIMELINE=timeline_medium
-	$(MAKE) drift-benchmark    TIMELINE=timeline_medium
-	$(MAKE) adaptive-benchmark TIMELINE=timeline_medium
-	$(MAKE) surrogate-benchmark
-	$(MAKE) end2end-demo       TIMELINE=timeline_medium
-	$(MAKE) anomaly-benchmark  TIMELINE=timeline_dense_urban
-	$(MAKE) drift-benchmark    TIMELINE=timeline_dense_urban
-	$(MAKE) adaptive-benchmark TIMELINE=timeline_dense_urban
-	$(MAKE) end2end-demo       TIMELINE=timeline_dense_urban
-	$(MAKE) cross-scenario-compare \
+	"$(MAKE)" anomaly-benchmark  TIMELINE=timeline_medium
+	"$(MAKE)" drift-benchmark    TIMELINE=timeline_medium
+	"$(MAKE)" adaptive-benchmark TIMELINE=timeline_medium
+	"$(MAKE)" surrogate-benchmark
+	"$(MAKE)" end2end-demo       TIMELINE=timeline_medium
+	"$(MAKE)" anomaly-benchmark  TIMELINE=timeline_dense_urban
+	"$(MAKE)" drift-benchmark    TIMELINE=timeline_dense_urban
+	"$(MAKE)" adaptive-benchmark TIMELINE=timeline_dense_urban
+	"$(MAKE)" end2end-demo       TIMELINE=timeline_dense_urban
+	"$(MAKE)" cross-scenario-compare \
 		CROSS_BASE=timeline_medium \
 		CROSS_CONTRAST=timeline_dense_urban
-	$(MAKE) seed-replication-aggregate
+	"$(MAKE)" seed-replication-aggregate
 	@if [ -d data/raw_public/nordicdat ]; then \
-	    $(MAKE) nordicdat-face-validity; \
+	    "$(MAKE)" nordicdat-face-validity; \
 	else \
 	    echo "[all-from-cache] skipping nordicdat-face-validity: data/raw_public/nordicdat/ not present (see data/raw_public/README.md)"; \
 	fi

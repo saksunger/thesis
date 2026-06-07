@@ -114,6 +114,18 @@ You cannot regenerate the MATLAB simulator outputs themselves. You **can**:
   (Chapter 11A — analysis verification, not full simulator re-run),
 - re-derive every figure and table in those chapters.
 
+> **Windows reviewers, please read.** Native Windows `make` (GnuWin32 at
+> `C:\Program Files (x86)\GnuWin32\bin\make.exe`) crashes on the recursive
+> sub-`$(MAKE)` calls in `all-from-cache` / `all-full` because MSYS bash
+> mis-parses the unescaped parentheses in the parent path. The Makefile
+> now quotes every `"$(MAKE)"` invocation, which fixes the path-with-space
+> case as of v0.2.2 — but the canonical Windows path remains **Profile B
+> (Docker)** because it side-steps every Windows-vs-POSIX shell variance
+> in one stroke. If you must run native (no Docker, no WSL): either
+> install MSYS2's own `make` (`pacman -S make`, lives at a space-free
+> path) or move GnuWin32 to e.g. `C:\GnuWin32\bin\make.exe`. WSL2 +
+> Ubuntu 22.04 + Profile A also works out of the box.
+
 ### Profile B — Docker, host-tooling-agnostic
 
 If you do not want to install anything locally:
@@ -325,6 +337,7 @@ all suffice; the simulator does not exercise any commercial-only feature.
 | 2026-06-06 | v0.1 | Initial Tier 1 reproducibility package: lockfile (A2), MATLAB pin (A4). Docker (A1), `make all-*` (A3), and Zenodo bundle (A5) tracked separately in `docs/plan.md` Phase 10. |
 | 2026-06-06 | v0.2 (this doc) | All five Tier 1 sub-items complete: Dockerfile + `make all-from-cache` + `make all-full` + `data/manifest.sha256` + `scripts/build_zenodo_bundle.py` + `scripts/fetch_zenodo_bundle.py` + `docs/zenodo_metadata.json` + `docs/zenodo_upload.md`. Only outstanding item is minting the real Zenodo DOI at thesis submission. 396 Python tests passing. |
 | 2026-06-06 | v0.2.1 | Sandbox dress rehearsal completed at `10.5072/zenodo.509971`; the full upload → fetch → unpack → per-file SHA256 verify loop passed 308/308 against the in-bundle manifest. `scripts/fetch_zenodo_bundle.py` taught to accept Zenodo's MD5 transport checksum (the public REST payload does not expose SHA256), with per-file SHA256 still enforced via `data/manifest.sha256` after extraction. 21-test unit suite added (`scripts/tests/test_fetch_zenodo_bundle.py`) covering host routing, checksum parsing, and `--local` round-trips. Tarball extraction hardened with `filter="data"` (Python 3.12+) to silence the 3.14 deprecation warning and add belt-and-suspenders path-traversal protection. Total Python tests: **417 passed (host)**. |
+| 2026-06-07 | v0.2.2 | Cross-platform Makefile fix: every recursive `$(MAKE)` sub-call now quoted as `"$(MAKE)"` (30 occurrences across `all-from-cache` and `all-full`). Surfaced by a Windows reviewer whose GnuWin32 `make` lives at `C:\Program Files (x86)\GnuWin32\bin\make.exe`; MSYS bash mis-parsed the unescaped `(x86)` parenthesis during sub-make expansion. Quoted form is a no-op on POSIX shells but rescues every Windows path-with-spaces install. Windows reviewer note added to §2; **Profile B (Docker)** remains the canonical Windows path. Pytest still **417 passed** on host. |
 
 This document supersedes any version-pin language in earlier ADRs (ADR-1,
 ADR-7) for the purposes of reproducibility.
