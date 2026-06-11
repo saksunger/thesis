@@ -1,0 +1,52 @@
+@startuml
+' High-level block/architecture view of the drift-aware HO monitoring framework.
+' Companion to framework_overview.puml (which is the detailed activity/flow view).
+' Export to vector (SVG/PDF) and place under thesis/paper/img/.
+
+' No Windows-only font (e.g. Segoe UI): keep PlantUML's default sans so the
+' embedded font also exists on the Overleaf/Inkscape side and text does not overflow.
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam rectangle {
+  BackgroundColor #F5F5F5
+  BorderColor #888888
+  FontColor #333333
+  RoundCorner 15
+}
+skinparam packageStyle rectangle
+top to bottom direction
+
+rectangle "Data Layer (simulation-first)" as L1 {
+  rectangle "5G NR SA handover simulator\n(3GPP TR 38.901 radio model)" as SIM
+  rectangle "Scenario design\ncontrolled drift + anomaly injection\n(ground-truth labels)" as SCEN
+  rectangle "Window features (5 s / 1 s)\n+ per-second KPI streams" as KPI
+
+  SIM -down-> SCEN
+  SCEN -down-> KPI
+}
+
+rectangle "Monitoring Layer (parallel)" as L2 {
+  rectangle "Anomaly Detection\n(IF / LOF / OCSVM / PCA-AE / MLP-AE)\nshort-term faults" as AD
+  rectangle "Concept-Drift Detection\n(ADWIN / PH / KSWIN / DDM / EDDM / MMD / Energy)\nlong-term KPI shift" as DRIFT
+}
+
+rectangle "Adaptation Layer" as L3 {
+  rectangle "Drift-triggered self-supervised\nfiltered retraining\n(drop top-20%, refit PCA-AE monitor)" as RETRAIN
+}
+
+rectangle "Configuration-Performance & Decision Layer" as L4 {
+  rectangle "Config-performance surrogate\n(HistGB + conformal QuantileGB)\n(TTT, hyst, A3) -> (HOSR, RLF, ping-pong)" as SURR
+  rectangle "Inverse query\nrecommend feasible config\n(max HOSR under constraints)" as INV
+  rectangle "Outputs & decision support\nalerts, recommendation + uncertainty,\ncounterfactual HOSR uplift" as OUT
+
+  SURR -down-> INV
+  INV -down-> OUT
+}
+
+KPI -down-> AD
+KPI -down-> DRIFT
+DRIFT -down-> RETRAIN : drift trigger
+DRIFT -down-> SURR : drift trigger
+RETRAIN -up-> AD : refit monitor
+
+@enduml

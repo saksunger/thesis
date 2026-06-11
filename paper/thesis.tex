@@ -1,0 +1,86 @@
+% !TEX encoding = UTF-8 Unicode
+%
+% Master thesis, print version, English.
+% Class options (dyplom.cls):
+%   magister / inzynier - master thesis or engineering thesis
+%   druk / archiwum     - print version (for supervisor) or archive version
+%   en                  - English version
+%
+\documentclass[magister,druk,en]{dyplom}
+
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{acronym}
+\usepackage{svg}   % vector SVG figures via Inkscape (Overleaf supports it); needs --shell-escape
+\svgpath{{img/}}   % search for .svg files in img/ (same folder as the other figures)
+
+% dyplom.cls already loads microtype + fontenc (T1). As a last resort, allow a
+% little extra inter-word stretch so hard paragraphs do not overrun the margin
+% or leave very loose lines.
+\setlength{\emergencystretch}{3em}
+
+% TikZ is loaded by dyplom.cls; load the libraries needed for the flow diagrams.
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+
+% Look for figures in the local img/ folder (copied from results/.../figures).
+\graphicspath{{img/}}
+
+% Maximum section depth (chapter.section.subsection.subsubsection).
+\setcounter{secnumdepth}{4}
+
+% Listings settings (minted; requires -shell-escape + Pygments on compile).
+\setminted{breaklines,
+frame=lines,
+framesep=3mm,
+baselinestretch=1.1,
+fontsize=\small,
+% linenos
+}
+
+% ---- Title-page metadata -------------------------------------------------
+\fieldofstudy{Applied Computer Science}     % TODO: confirm field/spec code on title-page list
+\author{Sevda Aksünger}
+\title{Machine-Learning-Based Anomaly and Drift-Aware Monitoring for Handover Optimization in 5G/6G Radio Access Networks}
+\supervisor{dr inż. Aleksandra Knapińska}
+% \consultant{Consultant's name}            % Uncomment if applicable
+% \specialisation{AAA}                      % Uncomment if applicable
+\keywords{handover optimization, anomaly detection, concept drift, network monitoring, 5G/6G}
+% --------------------------------------------------------------------------
+
+\begin{document}
+
+\maketitle
+
+\input{abstract}
+
+\tableofcontents
+
+\input{acronyms}
+
+\input{introduction}
+
+\input{chapter1_background}
+
+\input{chapter2_methodology}
+
+\input{chapter3_results}
+
+\input{summary}
+
+% Bibliography
+\bibliographystyle{dyplom}
+\bibliography{bibliography}
+
+% Lists of figures, listings, tables
+\listoffigures
+\listoflistings
+\listoftables
+
+% Appendices - comment out if not applicable
+\appendixpage
+\appendix
+\input{appendix_ai}
+
+\end{document}

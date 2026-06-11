@@ -1,0 +1,96 @@
+% !TEX encoding = UTF-8 Unicode
+% !TEX root = thesis.tex
+
+\chapter*{Summary and Conclusions}
+
+This thesis investigated machine-learning-based, drift-aware monitoring for
+handover (HO) optimization in 5G/6G radio access networks. Because no public
+5G-SA dataset exposes both the HO control parameters and the resulting mobility
+KPIs, the main data was produced with a custom, 3GPP-compliant 5G NR SA
+handover simulator; its radio layer was calibrated against the real NordicDat
+drive-test dataset and additionally checked through an external face-validity
+test, with the real data never merged into the simulated benchmark. Returning to
+the aim and the four research questions:
+
+\begin{itemize}
+  \item \textbf{RQ1 (anomaly detection):} unsupervised detectors catch
+  structured faults well (measurement-glitch PR-AUC up to $0.858$, RLF-burst up
+  to $0.751$) but subtle faults---interference spikes and slow single-UE
+  degradation---stay near the noise floor; pooled over the timeline Isolation
+  Forest is the strongest single detector (PR-AUC $0.425$), and an ablation shows
+  the RSRQ feature family is the most informative by a wide margin.
+  \item \textbf{RQ2 (drift):} every injected drift is detected by every detector
+  (no misses), so the practical question is a latency-versus-false-alarm
+  trade-off---batch two-sample tests (Energy/MMD) fire in $\approx 3$\,s at a
+  high false-alarm rate, whereas sequential detectors (ADWIN/DDM) keep false
+  alarms near $0.005$ per second but react more slowly.
+  \item \textbf{RQ3 (adaptation):} the central---and somewhat surprising---result
+  is that \emph{how} a monitor is retrained matters more than \emph{whether} it
+  is retrained. Naive periodic or drift-triggered refits roughly halve PR-AUC
+  ($0.264 \rightarrow \approx 0.12$) through self-poisoning, whereas a
+  self-supervised filtered refit preserves the static baseline overall
+  ($0.248$ vs $0.264$) and more than triples drift-phase PR-AUC
+  ($0.057 \rightarrow 0.187$), at lower cost.
+  \item \textbf{RQ4 (performance impact and reconfiguration):} a
+  gradient-boosting configuration--performance surrogate predicts mobility KPIs
+  accurately (HOSR $R^2 = 0.96$, RLF $R^2 = 0.95$, ping-pong $R^2 = 0.72$) with
+  split-conformal intervals that restore calibrated coverage; an inverse query
+  returns $12$ of $36$ feasible configurations (favouring the shortest
+  time-to-trigger), and an end-to-end detect--recommend--recover loop fires seven
+  interventions for a cumulative, model-predicted HOSR uplift of $+0.62$.
+\end{itemize}
+
+\section*{Limitations}
+
+The scope is 5G NR SA intra-RAT inter-gNB Xn handover; NSA, intra-gNB and
+inter-RAT mobility are out of scope. The framework is deliberately positioned as
+monitoring and decision support rather than as a parameter-tuning control loop:
+automatic tuning of time-to-trigger, hysteresis and cell individual offset is
+already standardized as mobility robustness optimization (MRO)~\cite{tr36839,ts28313},
+and the reconfiguration step here is intended to feed such a function rather than
+to replace it. In contrast to MRO, which acts on lagging mobility-failure
+counters, the system intervenes on leading drift indicators; it does not,
+however, forecast the failure of an individual handover before it occurs. The
+anomalies are \emph{injected} in
+simulation rather than observed in the field; the reported HOSR uplift is a
+surrogate \emph{model prediction}, not a measured field gain; the RSRQ radio
+layer retains a residual calibration mismatch (KS $0.467$); and the
+per-anomaly-type best detector is seed-sensitive, although the pooled detector
+ranking and the filtered-over-naive result are stable across seeds and scenarios.
+
+\section*{Future work}
+
+Several concrete directions follow from the limitations above. The most immediate
+is to bring the experimental environment closer to reality without relying on
+operator event logs, which are rarely accessible in practice. This means richer
+system-level simulators (for example ns-3 5G-LENA or Simu5G) and, longer term,
+digital-twin style environments, while keeping the controlled injection of drift
+and anomalies that makes labelled benchmarking possible; public drive-test
+datasets such as NordicDat and the urban Bangladesh LTE handover set can continue
+to serve as external face-validity references.
+
+A second direction is continual (online, incremental) learning, so that the
+anomaly monitor and the configuration-performance surrogate are updated
+continuously under persistent change rather than refitted in batches. The
+self-supervised filtering rule introduced here is a natural starting point and
+should be made adaptive and given stability guarantees. A third direction is
+explainability: identifying which KPIs, radio conditions, or parameter changes
+are most strongly associated with handover degradation, so that a recommended
+reconfiguration can be justified rather than only predicted. A related direction
+is to move from detection toward genuine \emph{proactive} prediction: the present
+framework reacts to the onset of drift on leading KPI streams, but it does not
+forecast the failure of an individual handover before it happens. Adding an
+event-level predictor (for example a per-UE time-to-failure or
+handover-failure model that estimates the probability of a too-late or too-early
+handover ahead of time) was kept out of the present scope because it requires
+per-event prediction targets and a forecasting setup distinct from the
+unsupervised monitoring studied here; combined with the configuration--performance
+surrogate, such a predictor would let the system act before the precursor drift
+fully materialises and connects naturally to the proactive handover-prediction
+line of work reviewed in Section~\ref{subsec:rw-prediction}. Finally, the
+configuration scope can be broadened beyond time-to-trigger, hysteresis, and A3
+offset to include cell individual offset (CIO), and beyond intra-RAT inter-gNB to
+the cases excluded here, moving toward a safe and interpretable decision-support
+mechanism that limits unnecessary optimisation actions. Together these steps
+extend handover monitoring toward the broader goal of drift-aware, explainable,
+and adaptive mobility management.

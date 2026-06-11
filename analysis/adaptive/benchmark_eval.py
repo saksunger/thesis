@@ -85,6 +85,7 @@ from analysis.anomaly.features import (
 )
 from analysis.anomaly.labels import label_windows
 from analysis.common.paths import DATA_PROC, assert_timeline_present, timeline_dir
+from analysis.common.plotstyle import apply_thesis_style
 from analysis.drift.detectors import ADWINDetector
 from analysis.drift.labels import label_streams
 from analysis.drift.streams import STREAM_NAMES, StreamConfig, build_streams, pivot_streams
@@ -370,8 +371,9 @@ def _save_figure(
                            ticks at retrain events.
     Panel B (small, right): cost (CPU sec total) vs gain (overall PR-AUC).
     """
+    apply_thesis_style()
     fig, axes = plt.subplots(
-        1, 2, figsize=(14, 5), gridspec_kw={"width_ratios": [3, 1]}
+        1, 2, figsize=(11, 5.2), gridspec_kw={"width_ratios": [3, 1]}
     )
 
     # --- Panel A: sliding PR-AUC over time ---
@@ -426,7 +428,7 @@ def _save_figure(
         colours = [_STRATEGY_COLOURS.get(s, "black") for s in in_order]
         ax.bar(x_pos, gains, color=colours, alpha=0.85, edgecolor="black")
         ax.set_xticks(x_pos)
-        ax.set_xticklabels(in_order, rotation=20, ha="right", fontsize=9)
+        ax.set_xticklabels(in_order, rotation=20, ha="right", fontsize=11)
         ax.set_ylabel("overall PR-AUC")
         ax.set_ylim(0, max(gains) * 1.25 if max(gains) > 0 else 1.0)
         # Annotate cost on top of each bar
@@ -434,13 +436,13 @@ def _save_figure(
             ax.text(
                 xi, gain_val + 0.005,
                 f"PR-AUC={gain_val:.3f}\nCPU={cost_val:.2f}s",
-                ha="center", va="bottom", fontsize=8,
+                ha="center", va="bottom", fontsize=10,
             )
         ax.set_title("Overall PR-AUC + CPU cost")
         ax.grid(axis="y", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(fp, dpi=140, bbox_inches="tight")
+    fig.savefig(fp, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 

@@ -1,0 +1,354 @@
+% !TEX encoding = UTF-8 Unicode
+% !TEX root = thesis.tex
+
+\chapter{Results and Discussion}
+\label{ch:results}
+
+This chapter reports the results of the four analysis layers and the external
+validation, and discusses what they mean. Unless stated otherwise, all numbers
+are computed on the \texttt{timeline\_medium} timeline (30 phases, 1\,800\,s,
+eight drifts, forty anomalies) with the protocols of
+Chapter~\ref{ch:method}. Each section maps to one research question:
+anomaly detection (RQ1), drift detection (RQ2), drift-aware maintenance (RQ3),
+and the configuration--performance link with reconfiguration (RQ4); a final
+section reports how well the findings generalise.
+
+\section{Anomaly detection (RQ1)}
+\label{sec:res-anomaly}
+
+Table~\ref{tab:anomaly-type} reports the per-type precision--recall AUC (PR-AUC)
+of the five detectors, and Table~\ref{tab:anomaly-overall} the pooled PR-AUC over
+the whole timeline with 95\% bootstrap intervals. The pattern is fairly
+consistent: the two anomalies that leave a clear, structured signature are
+detected reasonably well, while the two subtle ones sit close to the noise floor.
+
+\begin{table}[ht]
+\centering
+\caption{Per-type anomaly PR-AUC at the 5\,s window (best per row in bold; own elaboration).}
+\label{tab:anomaly-type}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Anomaly type & IsoForest & LOF & OCSVM & PCA-AE & MLP-AE \\
+\midrule
+Measurement glitch  & 0.635 & 0.842 & \textbf{0.858} & 0.784 & 0.756 \\
+RLF burst           & 0.616 & 0.703 & 0.685 & \textbf{0.751} & 0.655 \\
+Interference spike  & 0.069 & \textbf{0.152} & 0.099 & 0.111 & 0.078 \\
+Slow degradation    & 0.045 & 0.038 & 0.045 & \textbf{0.048} & 0.036 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Pooled anomaly PR-AUC over the whole timeline, with 95\% bootstrap CI (own elaboration).}
+\label{tab:anomaly-overall}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Detector & Pooled PR-AUC [95\% CI] \\
+\midrule
+IsoForest   & 0.425 [0.391, 0.460] \\
+PCA-AE      & 0.262 [0.237, 0.287] \\
+MLP-AE      & 0.236 [0.212, 0.262] \\
+LOF         & 0.157 [0.149, 0.167] \\
+OneClassSVM & 0.154 [0.145, 0.164] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Measurement glitch and RLF burst are recovered with PR-AUC in the $0.6$--$0.86$
+range, because both leave a structured fingerprint across several features (a
+frozen RSRP, or a correlated SINR/RSRQ collapse with extra RLF events).
+Interference spike is much harder (best PR-AUC $0.152$, LOF): it is cell-targeted
+and short, so only a fraction of the fleet sees it in any window. Even so, these
+values must be read against the imbalance of the task
+(Section~\ref{sec:anomaly-method}): with a positive prevalence of only about
+$2.4\%$ for interference spike, the random-classifier PR-AUC baseline is
+$\approx 0.024$, so LOF's $0.152$ is roughly six times the chance level rather
+than a non-detection. Slow degradation is the only type that stays essentially at
+that floor (PR-AUC $\approx 0.04$ against a $\approx 0.037$ baseline) because a
+slow ramp on a single UE barely moves a fleet-aggregated window. This separation between
+``easy'' and ``subtle'' anomalies is the main observation for RQ1, and is part of
+what motivates the adaptive layer of Section~\ref{sec:res-adaptive}.
+
+No single detector performs best everywhere, which is worth noting. By per-type
+mean PR-AUC the strongest detector is LOF, whereas by pooled PR-AUC it is
+Isolation Forest ($0.425$); the two views differ because the pooled metric is
+dominated by the large number of normal windows and by the easy anomalies. A
+reasonable reading is that detector choice should follow the anomaly profile of
+interest rather than a single headline number.
+
+\paragraph{Robustness checks.}
+The window-size sweep ($2$--$30$\,s) shifts the per-type numbers but not the
+ranking: short windows ($2$\,s) help the abrupt glitch and burst, while a longer
+window ($30$\,s) helps the slowly varying anomalies (for example RLF-burst PR-AUC
+rises to $0.845$ for PCA-AE at $30$\,s). The drop-one-family ablation shows that
+the RSRQ feature family is the most important by a wide margin: removing it costs
+up to $0.33$ PR-AUC on measurement glitch, whereas removing the event-count or
+derived-rate families changes little. Figure~\ref{fig:anomaly-degradation} shows
+the per-phase false- and true-positive rates with drift phases shaded, making
+visible how a static detector drifts off its operating point as the environment
+changes.
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.85\textwidth]{drift_degradation}
+\caption{Per-phase false-/true-positive rate of the static anomaly monitor, drift phases shaded (own elaboration).}
+\label{fig:anomaly-degradation}
+\end{figure}
+
+\section{Drift detection (RQ2)}
+\label{sec:res-drift}
+
+Every one of the eight injected drifts is detected by every one of the seven
+detectors (instance-level miss rate $0$), so the question is not \emph{whether}
+drift is found but with what \emph{latency} and at what \emph{false-alarm} cost.
+Table~\ref{tab:drift} gives the median detection latency per drift type together
+with the mean baseline false-alarm rate, and Figure~\ref{fig:drift-heatmap}
+visualises the same trade-off.
+
+\begin{table}[ht]
+\centering
+\caption{Median drift-detection latency (s) per drift type, and mean baseline false-alarm rate (per second) on clean phases (own elaboration).}
+\label{tab:drift}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Detector & Channel & Mobility & Reconfig & Traffic & FPR\,(/s) \\
+\midrule
+Energy-batch & 3.0  & 3.0  & 3.0  & 3.0  & 0.115 \\
+MMD-batch    & 3.0  & 3.0  & 3.0  & 3.0  & 0.117 \\
+DDM          & 12.0 & 2.0  & 3.0  & 15.5 & 0.005 \\
+Page--Hinkley & 17.0 & 10.5 & 6.0  & 11.5 & 0.011 \\
+EDDM         & 25.5 & 3.0  & 7.5  & 5.0  & 0.006 \\
+ADWIN        & 23.0 & 19.0 & 13.0 & 29.0 & 0.005 \\
+KSWIN        & 51.5 & 20.0 & 20.0 & 24.5 & 0.008 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.9\textwidth]{drift_detection_heatmap}
+\caption{Drift-detection latency and baseline false-alarm rate per detector and stream (own elaboration).}
+\label{fig:drift-heatmap}
+\end{figure}
+
+The results point to a latency--false-alarm trade-off. The two batch two-sample
+tests, Energy-batch and MMD-batch, react fastest: they flag every drift type in
+about $3$\,s, but at the price of a high baseline false-alarm rate
+($\approx 0.12$ per second). The sequential and error-rate detectors are the
+opposite: ADWIN and DDM keep the baseline false-alarm rate around $0.005$ per
+second but take longer, and DDM is notably quick on the abrupt mobility and
+reconfiguration drifts ($2$--$3$\,s) where a sharp mean change is present. By the
+combined latency criterion (with misses penalised) the overall winner is
+Energy-batch, but in an operational setting the low-false-alarm detectors would
+be preferable; the right choice depends on whether the cost of a late alarm or a
+false alarm is higher. This trade-off, rather than a single best detector, is the
+main observation for RQ2.
+
+\section{Drift-aware adaptive monitoring (RQ3)}
+\label{sec:res-adaptive}
+
+The PCA-reconstruction autoencoder (PCA-AE) is used as the base monitor for the
+adaptive experiments rather than the pooled-best Isolation Forest. The reason is
+that the adaptive loop repeatedly refits the detector under drift, so the
+selection criterion here is not the highest static accuracy but suitability for
+frequent, stable retraining: PCA-AE yields a single continuous
+reconstruction-error score that is cheap to refit and behaves consistently across
+refits, which makes the quantile-based filtering step (dropping the most
+suspicious windows before a refit) well defined. A tree-based score such as
+Isolation Forest re-grows its ensemble at every refit and shifts its operating
+threshold, which is less suited to the self-supervised filtering used below.
+
+Table~\ref{tab:adaptive} compares the four retraining strategies on the PCA-AE
+monitor, and Figure~\ref{fig:adaptive} plots PR-AUC over time. The main takeaway
+is that \emph{how} the monitor is retrained appears to matter more than
+\emph{whether} it is retrained.
+
+\begin{table}[ht]
+\centering
+\caption{Retraining strategies on the PCA-AE monitor (own elaboration).}
+\label{tab:adaptive}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Strategy & Overall PR-AUC & Drift-phase PR-AUC & Refits & Train samples \\
+\midrule
+Static                  & 0.264 & 0.057 & 1 & 2\,016 \\
+Periodic                & 0.115 & 0.036 & 9 & 14\,088 \\
+Drift-triggered naive   & 0.116 & 0.037 & 8 & 12\,048 \\
+Drift-triggered filtered & 0.248 & \textbf{0.187} & 8 & 10\,040 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.85\textwidth]{adaptive_pr_auc_over_time}
+\caption{Sliding PR-AUC over time for the four strategies, with the cost-versus-gain summary (own elaboration).}
+\label{fig:adaptive}
+\end{figure}
+
+Naive retraining tends to backfire here. Both periodic and
+drift-triggered-naive retraining roughly halve the overall PR-AUC (from $0.264$
+to $\approx 0.12$) and barely move the drift-phase PR-AUC. A likely reason is
+self-poisoning: because the retraining pool is taken without labels, a refit
+triggered just after a drift absorbs the post-drift anomalies into its notion of
+``normal'', so the model learns to ignore much of what it should flag. The
+self-supervised filter largely addresses this. The drift-triggered-filtered
+strategy keeps the overall PR-AUC close to the static baseline ($0.248$ vs
+$0.264$) and more than triples the drift-phase PR-AUC ($0.187$ vs $0.057$), a
+$+0.13$ improvement that meets the acceptance target of $+0.10$. It also does so
+at lower cost than the naive variants (fewer training samples), because the
+filter discards the most suspicious windows before refitting. The observation for
+RQ3 is therefore a conditional one: in these experiments drift-aware retraining
+helps mainly when the retraining data is first cleaned of likely anomalies, while
+an unfiltered refit performs worse than not retraining at all.
+
+\section{Configuration--performance and reconfiguration (RQ4)}
+\label{sec:res-config}
+
+\paragraph{Surrogate accuracy.}
+Table~\ref{tab:surrogate-point} reports the cross-validated accuracy of the
+HistGB surrogate on the three mobility KPIs. HOSR and RLF rate are predicted
+accurately ($R^2 = 0.96$ and $0.95$; HOSR MAE $0.043$), and ping-pong rate is
+harder but still useful ($R^2 = 0.72$). Because the cross-validation is grouped
+by configuration, these scores describe performance on configurations the model
+has never seen, not memorised training points.
+
+\begin{table}[ht]
+\centering
+\caption{Surrogate point accuracy, grouped 5-fold CV (own elaboration).}
+\label{tab:surrogate-point}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Target & MAE & RMSE & $R^2$ \\
+\midrule
+HOSR           & 0.043 & 0.075 & 0.956 \\
+RLF rate       & 0.004 & 0.005 & 0.952 \\
+Ping-pong rate & 0.015 & 0.019 & 0.717 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Uncertainty calibration.}
+Point accuracy is not enough for a recommendation; the intervals must be
+trustworthy. Table~\ref{tab:surrogate-cov} shows that the naive quantile
+intervals are too narrow under grouped cross-validation: their empirical coverage
+of the nominal $90\%$ interval falls to $0.65$--$0.83$. Split-conformal
+calibration moves all three targets back towards nominal ($0.72$--$0.89$), at the
+cost of slightly wider intervals. Figure~\ref{fig:reliability} shows the same
+correction as a reliability diagram. This is why the end-to-end loop reports
+conformal rather than naive intervals.
+
+\begin{table}[ht]
+\centering
+\caption{Empirical coverage of the nominal 90\% prediction interval (own elaboration).}
+\label{tab:surrogate-cov}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Target & Naive coverage & Conformal coverage \\
+\midrule
+HOSR           & 0.77 & 0.84 \\
+RLF rate       & 0.65 & 0.72 \\
+Ping-pong rate & 0.83 & 0.89 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.85\textwidth]{reliability_diagram}
+\caption{Naive vs split-conformal interval coverage (own elaboration).}
+\label{fig:reliability}
+\end{figure}
+
+\paragraph{Inverse query.}
+Asked which configuration maximises HOSR under the operating constraints
+(HOSR~$\geq0.95$, RLF~$\leq0.05$, ping-pong~$\leq0.10$) at the median deployment
+context, the surrogate finds $12$ of the $36$ candidates feasible. The top three
+all use the shortest time-to-trigger, TTT~$=256$\,ms (with hysteresis/A3 offset
+$(6,0)$, $(2,3)$ and $(0,6)$\,dB), each reaching predicted HOSR~$\approx 1.0$.
+The interpretation is that, in this radio context, a fast trigger paired with
+enough hysteresis or offset to suppress ping-pong is preferable, and the
+surrogate makes that trade-off explicit (Figure~\ref{fig:inverse}).
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.85\textwidth]{inverse_query}
+\caption{Feasible configurations on the HOSR vs RLF plane; top-3 annotated (own elaboration).}
+\label{fig:inverse}
+\end{figure}
+
+\paragraph{End-to-end reconfiguration.}
+Running the full loop over the timeline produces seven drift-triggered
+interventions. The most relevant case is the harmful reconfiguration drift
+(D-4), where the operator raises the time-to-trigger: the monitor detects it and
+the surrogate recommends a recovery configuration, and across all interventions
+the cumulative \emph{predicted} HOSR uplift is $+0.62$
+(Figure~\ref{fig:end2end}). All four demo acceptance checks pass: at least five
+interventions fire, every recommendation lies inside the trained grid, both D-4
+events change the configuration, and the cumulative HOSR uplift is positive. This
+completes the RQ4 loop: drift can degrade the handover KPI, and a feasible
+reconfiguration, chosen from the surrogate, is predicted to recover it. The
+uplift is a model prediction rather than a measured field gain, which is stated
+as a limitation.
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.95\textwidth]{end_to_end_moneyshot}
+\caption{End-to-end loop: sliding PR-AUC, anomaly score, interventions and cumulative HOSR uplift (own elaboration).}
+\label{fig:end2end}
+\end{figure}
+
+\section{External validation}
+\label{sec:res-external}
+
+Three checks probe how far these results travel
+(Table~\ref{tab:external}). First, a cross-seed replication over five master
+seeds: the drift-volume is stable (coefficient of variation $0.04$), the
+filtered-beats-naive gap replicates ($+0.072$, 95\% CI $[+0.033, +0.113]$), the
+end-to-end HOSR uplift is essentially identical across seeds
+($+0.621$), and the pooled anomaly winner is Isolation Forest in all five seeds.
+The one criterion that does not pass is the stability of the \emph{per-type}
+anomaly winner, which alternates between LOF, One-Class SVM and MLP-AE across
+seeds; this is consistent with the tight per-type cluster seen in
+Section~\ref{sec:res-anomaly} and is reported transparently as a limitation.
+
+Second, a cross-scenario check on a denser urban timeline: all five criteria
+pass. The filtered-beats-naive sign is preserved, and the end-to-end uplift not
+only holds but scales to $+1.24$, consistent with there being more to gain when
+mobility is more demanding. Third, a face-validity check on real NordicDat
+5G-NSA telemetry, run fully self-supervised: the monitor flags only $1.2\%$ of
+windows (well under the $10\%$ sanity ceiling) and its flagging peaks at the
+$13{:}00$ commute hour ($3.5\times$ the daily mean), which is operationally
+plausible. Because that data has no ground truth, no precision or recall is
+claimed.
+
+\begin{table}[ht]
+\centering
+\caption{External-validation headline outcomes (own elaboration).}
+\label{tab:external}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Check & Result & Verdict \\
+\midrule
+Cross-seed: filtered $>$ naive      & $+0.072$ [$+0.033,+0.113$] & pass \\
+Cross-seed: end-to-end HOSR uplift  & $+0.621$ (CV $\approx 0$)  & pass \\
+Cross-seed: per-type anomaly winner & unstable (LOF/OCSVM/MLP-AE) & fail \\
+Cross-scenario (dense urban)        & all 5 criteria; uplift $+1.24$ & pass \\
+NordicDat face validity             & $1.2\%$ flagged, $13{:}00$ peak & pass \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+\label{sec:res-discussion}
+
+Taken together, the four layers are consistent with the thesis premise that
+handover monitoring benefits from being anomaly- and drift-aware rather than
+trained once and left unchanged. Anomaly detection works well for structured
+faults but struggles with subtle, single-UE or short cell-local ones, which sets
+a realistic expectation for what an unsupervised monitor can catch. Drift
+detection is dependable but involves an explicit latency-versus-false-alarm
+choice. The adaptive layer suggests that retraining after drift can make things
+worse if applied naively, and that a simple self-supervised filter is what allows
+retraining to yield a net gain. Finally, the surrogate links configuration to
+outcome accurately enough to suggest a recovery configuration after a harmful
+change, with calibrated uncertainty. The main
+limitations follow directly from the design: the anomalies are injected rather
+than observed in the field, the KPI uplift is a surrogate prediction rather than
+a measured gain, and the per-type anomaly ranking is seed-sensitive. These are
+revisited as future work in the next chapter.

@@ -1,0 +1,87 @@
+\abstract{
+% English abstract.
+
+Handover (HO) management is one of the most important mobility functions in 5G
+and emerging 6G radio access networks. When handovers are configured or monitored
+poorly they cause radio link failures (RLF), ping-pong effects, and a worse
+experience for the user, and as networks become denser every user goes through
+many more of them, which makes reliable HO monitoring increasingly important.
+This thesis studies one question in particular: does HO monitoring become more
+reliable when short-term anomalies and long-term concept drift are handled
+together instead of separately? The work is scoped to the intra-RAT inter-gNB
+Standalone (SA) case, which is among the most common mobility situations in dense
+deployments.
+
+A practical obstacle shapes the methodology. No public dataset exposes the HO
+control parameters (time-to-trigger, hysteresis, A3 offset) together with the
+mobility KPIs they produce, so the main data comes from a custom 5G NR SA
+handover simulator built to follow the relevant 3GPP procedures. Its radio layer
+is calibrated against the real NordicDat drive-test data, with close agreement
+for RSRP and SINR and a documented residual mismatch for RSRQ. Real and simulated
+samples are never mixed, so the benchmark stays clean.
+
+On this data the thesis builds and compares four layers: unsupervised anomaly
+detection on HO KPI windows, concept-drift detection on KPI streams, a
+drift-aware monitor that retrains the anomaly detector when drift is confirmed,
+and a configuration-performance surrogate that links HO parameters to mobility
+outcomes.
+
+Four findings stand out. Unsupervised detectors catch structured faults well
+(PR-AUC up to $0.858$) but miss most subtle ones. Every injected drift is
+eventually detected, so the real design choice is a trade-off between detection
+latency and false alarms rather than whether drift is seen at all. Retraining the
+monitor naively on recent data backfires: it absorbs post-drift anomalies into
+``normal'' and roughly halves detection quality, a self-poisoning effect. A
+simple self-supervised filter that drops the most suspicious windows before
+retraining repairs this and more than triples drift-phase PR-AUC. Finally, a
+gradient-boosting surrogate predicts HOSR accurately ($R^2 = 0.96$) and, wrapped
+in conformal prediction intervals, drives an end-to-end detect, recommend, and
+recover loop with a model-predicted HOSR gain of $+0.62$. The overall message is
+that how a monitor is kept up to date matters more than whether it is updated at
+all.
+
+}{
+% Streszczenie w jezyku polskim.
+
+Zarzadzanie przelaczeniem (handover, HO) jest jedna z najwazniejszych funkcji
+mobilnosci w sieciach radiowych 5G oraz powstajacych sieciach 6G. Zle
+skonfigurowane lub zle monitorowane przelaczenia powoduja utrate polaczenia
+radiowego (RLF), efekt ping-pong i pogorszenie jakosci uzytkowania, a wraz z
+zageszczaniem sieci kazdy uzytkownik wykonuje ich znacznie wiecej, co czyni
+niezawodne monitorowanie HO coraz wazniejszym. Praca bada jedno pytanie: czy
+monitorowanie HO staje sie bardziej niezawodne, gdy krotkoterminowe anomalie i
+dlugoterminowy dryf pojec sa traktowane lacznie, a nie osobno. Zakres ograniczono
+do przypadku intra-RAT inter-gNB w trybie Standalone (SA), jednego z
+najczestszych scenariuszy mobilnosci w gestych sieciach.
+
+Metodologie ksztaltuje praktyczne ograniczenie. Zaden publiczny zbior danych nie
+udostepnia jednoczesnie parametrow sterujacych HO (time-to-trigger, histereza,
+offset A3) oraz wynikajacych z nich wskaznikow KPI mobilnosci, dlatego glowne
+dane pochodza z wlasnego symulatora przelaczen 5G NR SA, zbudowanego zgodnie z
+odpowiednimi procedurami 3GPP. Jego warstwe radiowa skalibrowano wzgledem
+rzeczywistych danych z testow drogowych NordicDat, z dobra zgodnoscia dla RSRP i
+SINR oraz udokumentowana resztkowa rozbieznoscia dla RSRQ. Danych rzeczywistych
+nigdy nie laczono z symulowanymi, dzieki czemu benchmark pozostaje czysty.
+
+Na tych danych zbudowano i porownano cztery warstwy: nienadzorowana detekcje
+anomalii w oknach KPI przelaczen, detekcje dryfu pojec w strumieniach KPI,
+monitor swiadomy dryfu, ktory ponownie uczy detektor anomalii po potwierdzeniu
+dryfu, oraz zastepczy model konfiguracja-wydajnosc laczacy parametry HO z
+wynikami mobilnosci.
+
+Wyrozniaja sie cztery wyniki. Detektory nienadzorowane dobrze wykrywaja usterki
+strukturalne (PR-AUC do $0,858$), lecz w wiekszosci pomijaja subtelne. Kazdy
+wstrzykniety dryf zostaje ostatecznie wykryty, wiec rzeczywistym wyborem
+projektowym jest kompromis miedzy opoznieniem detekcji a falszywymi alarmami, a
+nie to, czy dryf w ogole zostanie zauwazony. Naiwne ponowne uczenie monitora na
+biezacych danych przynosi efekt odwrotny: wchlania anomalie po dryfie do
+``normy'' i w przyblizeniu polowi jakosc detekcji, co jest efektem samozatrucia.
+Prosty samonadzorowany filtr, ktory usuwa najbardziej podejrzane okna przed
+ponownym uczeniem, naprawia to i ponad trzykrotnie zwieksza PR-AUC w fazie dryfu.
+Wreszcie zastepczy model oparty na gradient boosting trafnie przewiduje HOSR
+($R^2 = 0,96$) i, opakowany w konformalne przedzialy predykcji, napedza kompletna
+petle wykryj, rekomenduj, przywroc, z przewidzianym przez model wzrostem HOSR o
+$+0,62$. Ogolny wniosek jest taki, ze sposob aktualizowania monitora ma wieksze
+znaczenie niz to, czy jest on w ogole aktualizowany.
+
+}

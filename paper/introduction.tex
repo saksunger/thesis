@@ -1,0 +1,50 @@
+\chapter*{Introduction}
+
+Mobility management, and especially the handover (HO) process, is one of the key control functions in cellular communication systems. In 5G and future radio access networks (RANs), the growing number of users, dense small-cell deployments, higher carrier frequencies, and higher user mobility make the radio environment increasingly dynamic~\cite{hoMgmtSurvey2025}. As networks grow denser and more heterogeneous, each user performs more handovers, and an incorrectly configured or poorly monitored handover can lead to HO failures, ping-pong effects, or radio link failures (RLF) that directly degrade the quality of service experienced by the user equipment (UE)~\cite{tr36839}. Reliable handover monitoring is therefore becoming a central concern in modern mobile networks.
+
+However, HO-related KPI degradations are not all of the same kind. Some appear as short-term local anomalies, often caused by transient or hard-to-observe events in the network~\cite{chandola2009anomaly}. Others stem from longer-term changes in network behavior, where the statistical properties of the data evolve over time---a phenomenon commonly termed \emph{concept drift}~\cite{gama2014survey,lu2018drift}, which can make monitoring or prediction models gradually lose accuracy as conditions change. Anomaly detection targets unusual short-term behavior, whereas concept drift detection recognizes changes in what should count as normal. The two are closely linked and need to be analyzed together: otherwise transient disruptions are easily confused with long-term model degradation, leading to incorrect monitoring decisions and unreliable optimisation actions.
+
+This thesis focuses specifically on the intra-RAT inter-gNB HO scenario, which is one of the most common and operationally important mobility cases in dense 5G deployments~\cite{hoMgmtSurvey2025}. Compared to inter-RAT transitions, intra-RAT handovers also offer a more homogeneous technical environment for the analysis pursued here~\cite{ts38300,ts37340}. The scenario is thus both practically important and tractable as a research target.
+
+AI-based HO prediction and optimization have already been studied extensively~\cite{seq2seqMob2022,slicedDRL2024}, anomaly detection on cellular and O-RAN performance metrics is itself an active research area~\cite{oranAnomaly2025,oranBenchmark2023}, and concept drift detection and KPI forecasting are receiving growing attention in mobile-network monitoring~\cite{leaf,forecast5g2024}. These directions, however, are usually pursued separately: a unified HO monitoring framework that jointly handles anomaly detection, concept drift detection, and configuration--performance analysis for intra-RAT inter-gNB scenarios remains largely missing. This gap is the main motivation for the thesis, which investigates how HO behavior in 5G/6G RANs can be monitored more reliably by separating short-term anomalies from long-term behavioral changes and analyzing how these changes interact with the HO configuration parameters.
+
+\section*{The aim and scope of the thesis}
+
+The main objective of this thesis is to develop a framework for adaptive HO monitoring under changing network conditions, combining anomaly detection, concept drift detection, drift-aware model maintenance, and configuration--performance modeling to improve the reliability of mobility management in 5G/6G networks. The emphasis is deliberately on \emph{monitoring}: the framework is not a new handover parameter-tuning control loop, since automatic tuning of time-to-trigger, hysteresis and cell individual offset is already standardized as mobility robustness optimization (MRO)~\cite{tr36839,ts28313}. The configuration--performance and reconfiguration component is instead intended as drift-aware, uncertainty-calibrated decision support that could feed such a function, and how it differs from MRO is made explicit in Section~\ref{sec:gap}.
+
+The research is mainly empirical and analytical. A dedicated HO monitoring dataset is generated using a 3GPP-compliant 5G Standalone system-level simulator whose radio-layer behavior is calibrated using publicly available drive-test measurements. Based on this environment, the thesis develops a framework that:
+\begin{enumerate}
+\item identifies short-term anomalous behavior in HO-related KPIs using unsupervised anomaly detection methods;
+
+\item detects long-term behavioral changes through concept drift detection and examines whether adaptive or continuous model updates can preserve monitoring quality over time;
+
+\item analyzes the relationship between selected HO control parameters and HO performance under changing network conditions.
+
+\end{enumerate}
+
+No publicly available dataset provides complete 5G Standalone HO information together with the HO control parameters and the measured outcomes, so the main experimental data is generated through simulation. Public drive-test datasets play a supporting role: improving the realism of the radio environment and providing an additional reference for validating the generated data.
+
+Figure~\ref{fig:framework-overview} gives a high-level view of how these
+parts fit together: a simulation-first data layer, a monitoring layer that
+runs anomaly and concept-drift detection in parallel, a drift-triggered
+adaptation layer, and a configuration--performance and decision layer.
+
+\begin{figure}[htbp]
+\centering
+\IfFileExists{img/framework_general_flow.svg}{%
+  \includesvg[inkscapelatex=false,width=\linewidth,height=0.85\textheight,keepaspectratio]{framework_general_flow}%
+}{%
+  \fbox{\parbox[c][5cm][c]{0.82\linewidth}{\centering\ttfamily framework\_general\_flow\\[4pt]%
+  \normalfont\small Placeholder: export \texttt{thesis/docs/framework\_general\_flow.puml}
+  to \texttt{img/framework\_general\_flow.svg}.}}%
+}
+\caption[High-level architecture of the proposed framework]{High-level
+architecture of the proposed anomaly- and drift-aware handover monitoring
+framework, organised into four layers: a simulation-first data layer, a
+monitoring layer (parallel anomaly and concept-drift detection), a
+drift-triggered adaptation layer (self-supervised filtered retraining), and a
+configuration--performance and decision layer (own elaboration).}
+\label{fig:framework-overview}
+\end{figure}
+
+The remainder of this thesis is organized as follows. Chapter~\ref{ch:background} presents the background and related work. Chapter~\ref{ch:method} describes the datasets, the simulation environment, and the methodology. Chapter~\ref{ch:results} presents and discusses the experimental results. Finally, the last chapter summarizes the conclusions and outlines possible future research directions.

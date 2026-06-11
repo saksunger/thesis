@@ -55,6 +55,7 @@ from analysis.anomaly.features import (
 from analysis.anomaly.labels import anomaly_label_columns, label_windows
 from analysis.anomaly.metrics import bootstrap_pr_auc, format_ci
 from analysis.common.paths import DATA_PROC, assert_timeline_present, timeline_dir
+from analysis.common.plotstyle import apply_thesis_style
 
 
 # -------------------------------------------------------------------------
@@ -449,7 +450,8 @@ def _save_drift_degradation_figure(
         "drift_traffic_shift": "tab:purple",
     }
 
-    fig, axes = plt.subplots(2, 1, figsize=(13, 7), sharex=True)
+    apply_thesis_style()
+    fig, axes = plt.subplots(2, 1, figsize=(10, 6.5), sharex=True)
     phases = sorted(per_phase["phase_id"].unique())
 
     # Panel A: FPR per detector
@@ -468,7 +470,7 @@ def _save_drift_degradation_figure(
     ax.set_title(
         f"Phase 5 Iter B - drift-degradation panel ({cfg.timeline}, W={cfg.window_s}s)"
     )
-    ax.legend(loc="upper left", fontsize=8, ncol=2)
+    ax.legend(loc="upper left", fontsize=10, ncol=2)
     ax.grid(alpha=0.3)
 
     # Drift shading
@@ -491,19 +493,19 @@ def _save_drift_degradation_figure(
         ax.plot(g["phase_id"], g["tpr"], marker="o", linewidth=1.6, label=det)
     ax.set_xlabel("phase_id (timeline_medium: phase k = [60(k-1), 60k) s)")
     ax.set_ylabel("True-positive rate (recall)")
-    ax.legend(loc="upper left", fontsize=8, ncol=2)
+    ax.legend(loc="upper left", fontsize=10, ncol=2)
     ax.grid(alpha=0.3)
 
     # De-dupe legends for drift bands at the top of the figure
     handles, labels = axes[0].get_legend_handles_labels()
     dedup = dict(zip(labels, handles))
-    axes[0].legend(dedup.values(), dedup.keys(), loc="upper left", fontsize=8, ncol=2)
+    axes[0].legend(dedup.values(), dedup.keys(), loc="upper left", fontsize=10, ncol=2)
     handles, labels = axes[1].get_legend_handles_labels()
     dedup = dict(zip(labels, handles))
-    axes[1].legend(dedup.values(), dedup.keys(), loc="upper left", fontsize=8, ncol=2)
+    axes[1].legend(dedup.values(), dedup.keys(), loc="upper left", fontsize=10, ncol=2)
 
     fig.tight_layout()
-    fig.savefig(fp, dpi=140, bbox_inches="tight")
+    fig.savefig(fp, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 

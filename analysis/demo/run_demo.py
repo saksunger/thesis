@@ -53,6 +53,7 @@ from analysis.anomaly.features import (
 )
 from analysis.anomaly.labels import label_windows
 from analysis.common.paths import DATA_PROC, assert_timeline_present, timeline_dir
+from analysis.common.plotstyle import apply_thesis_style
 from analysis.config_perf.data import TARGET_COLS, load_sweep
 from analysis.config_perf.surrogate import (
     ConformalQuantileGBSurrogate,
@@ -363,7 +364,8 @@ def _save_moneyshot(
     cfg: RunDemoConfig,
     out_fp: Path,
 ) -> None:
-    fig = plt.figure(figsize=(15, 10))
+    apply_thesis_style()
+    fig = plt.figure(figsize=(12, 8))
     gs = GridSpec(2, 2, figure=fig, hspace=0.35, wspace=0.20)
     ax_a = fig.add_subplot(gs[0, 0])
     ax_b = fig.add_subplot(gs[0, 1])
@@ -375,7 +377,7 @@ def _save_moneyshot(
 
     # --- Panel A: sliding PR-AUC over time -------------------------------
     ax_a.set_title("(A) Sliding PR-AUC over time (drift-triggered-filtered + surrogate)",
-                   fontsize=10)
+                   fontsize=11)
     _shade_drift_phases(ax_a, gtd)
     if not pr_auc_curve.empty:
         ax_a.plot(
@@ -388,11 +390,11 @@ def _save_moneyshot(
     ax_a.set_ylabel("sliding PR-AUC")
     ax_a.set_ylim(0.0, max(1.0, pr_auc_curve["pr_auc"].max() + 0.05 if not pr_auc_curve.empty else 1.0))
     ax_a.grid(alpha=0.3)
-    ax_a.legend(loc="upper right", fontsize=8)
+    ax_a.legend(loc="upper right", fontsize=10)
 
     # --- Panel B: anomaly score raw trace --------------------------------
     ax_b.set_title("(B) Anomaly score (PCA-AE) with intervention markers",
-                   fontsize=10)
+                   fontsize=11)
     _shade_drift_phases(ax_b, gtd)
     if not result.per_window.empty and "score" in result.per_window.columns:
         ax_b.plot(
@@ -416,7 +418,7 @@ def _save_moneyshot(
 
     # --- Panel C: intervention table -------------------------------------
     ax_c.set_title("(C) Intervention log (drift trigger -> surrogate query)",
-                   fontsize=10)
+                   fontsize=11)
     ax_c.axis("off")
     if interventions:
         rows = [
@@ -442,8 +444,8 @@ def _save_moneyshot(
             loc="center", cellLoc="center",
         )
         tbl.auto_set_font_size(False)
-        tbl.set_fontsize(7)
-        tbl.scale(1.0, 1.4)
+        tbl.set_fontsize(9)
+        tbl.scale(1.0, 1.5)
         # Highlight rows with positive uplift
         for i, iv in enumerate(interventions[:12]):
             cell = tbl[(i + 1, 6)]
@@ -453,11 +455,11 @@ def _save_moneyshot(
                 cell.set_facecolor("#f8d7da")
     else:
         ax_c.text(0.5, 0.5, "No interventions fired",
-                  ha="center", va="center", fontsize=10)
+                  ha="center", va="center", fontsize=12)
 
     # --- Panel D: cumulative predicted HOSR uplift -----------------------
     ax_d.set_title("(D) Cumulative predicted HOSR uplift over interventions",
-                   fontsize=10)
+                   fontsize=11)
     if interventions:
         t = np.array([iv.t_trigger_s for iv in interventions])
         u = np.array([iv.signed_uplift("hosr") for iv in interventions])
@@ -469,24 +471,24 @@ def _save_moneyshot(
         for ti, ui, ci in zip(t, u, cum):
             ax_d.annotate(
                 f"{ui:+.3f}", (ti, ci),
-                xytext=(0, 5), textcoords="offset points",
-                fontsize=7, ha="center", color="#660000",
+                xytext=(0, 6), textcoords="offset points",
+                fontsize=9, ha="center", color="#660000",
             )
         ax_d.axhline(0, color="grey", lw=0.5, linestyle="--")
         ax_d.set_xlabel("time of trigger (s)")
         ax_d.set_ylabel("cumulative HOSR uplift")
         ax_d.grid(alpha=0.3)
-        ax_d.legend(loc="upper left", fontsize=8)
+        ax_d.legend(loc="upper left", fontsize=10)
     else:
         ax_d.text(0.5, 0.5, "No interventions fired",
-                  ha="center", va="center", fontsize=10)
+                  ha="center", va="center", fontsize=12)
 
     fig.suptitle(
         f"Phase 9 - End-to-end drift-aware adaptive demo  "
         f"(timeline={cfg.timeline}, {len(interventions)} interventions)",
-        fontsize=12,
+        fontsize=15,
     )
-    fig.savefig(out_fp, dpi=140, bbox_inches="tight")
+    fig.savefig(out_fp, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 

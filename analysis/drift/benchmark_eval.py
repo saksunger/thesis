@@ -39,6 +39,7 @@ import numpy as np
 import pandas as pd
 
 from analysis.common.paths import DATA_PROC, assert_timeline_present, timeline_dir
+from analysis.common.plotstyle import apply_thesis_style
 from analysis.drift.detectors import benchmark_detectors
 from analysis.drift.labels import label_streams
 from analysis.drift.metrics import (
@@ -256,7 +257,8 @@ def _save_heatmap(
     else:
         max_fpr = pd.Series(dtype=float)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5),
+    apply_thesis_style()
+    fig, axes = plt.subplots(1, 2, figsize=(10.5, 5.2),
                              gridspec_kw={"width_ratios": [3, 1]})
 
     # ------- Panel A: latency heatmap -------
@@ -276,11 +278,11 @@ def _save_heatmap(
                 ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1,
                                            fill=True, color="lightgray"))
                 ax.text(j, i, "missed", ha="center", va="center",
-                        color="dimgray", fontsize=9, weight="bold")
+                        color="dimgray", fontsize=11, weight="bold")
             else:
                 color = "white" if val < 25 else "black"
                 ax.text(j, i, f"{val:.1f}", ha="center", va="center",
-                        color=color, fontsize=10, weight="bold")
+                        color=color, fontsize=12, weight="bold")
     cb = plt.colorbar(im, ax=ax, shrink=0.85, label="latency (s, lower=better)")
 
     # ------- Panel B: per-detector max baseline FPR -------
@@ -292,7 +294,7 @@ def _save_heatmap(
     fpr_masked = np.ma.masked_invalid(fpr_vals)
     im2 = ax.imshow(fpr_masked, cmap="YlOrRd", vmin=0, vmax=0.20, aspect="auto")
     ax.set_xticks([0])
-    ax.set_xticklabels(["max FPR\nacross streams"], fontsize=9)
+    ax.set_xticklabels(["max FPR\nacross streams"], fontsize=11)
     ax.set_yticks(range(len(detectors_order)))
     ax.set_yticklabels([""] * len(detectors_order))
     ax.set_title("Baseline false-alarm rate")
@@ -300,11 +302,11 @@ def _save_heatmap(
         val = fpr_vals[i, 0]
         if np.isnan(val):
             ax.text(0, i, "n/a", ha="center", va="center",
-                    color="dimgray", fontsize=9)
+                    color="dimgray", fontsize=11)
         else:
             color = "black" if val < 0.10 else "white"
             ax.text(0, i, f"{val:.3f}", ha="center", va="center",
-                    color=color, fontsize=10, weight="bold")
+                    color=color, fontsize=12, weight="bold")
     plt.colorbar(im2, ax=ax, shrink=0.85, label="FPR /s (lower=better)")
 
     fig.suptitle(
@@ -313,7 +315,7 @@ def _save_heatmap(
         y=1.02,
     )
     fig.tight_layout()
-    fig.savefig(fp, dpi=140, bbox_inches="tight")
+    fig.savefig(fp, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 

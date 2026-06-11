@@ -1,0 +1,111 @@
+@startuml
+' Source for Figure "Overview of the drift-aware HO monitoring framework"
+' Export to vector (PDF or SVG) and place the result in thesis/paper/img/
+' as framework_overview.pdf  (referenced by \ref{fig:framework} in chapter2_methodology.tex).
+
+' No Windows-only font (e.g. Segoe UI): keep PlantUML's default sans so the
+' embedded font also exists on the Overleaf/Inkscape side and text does not overflow.
+skinparam defaultFontSize 12
+skinparam activity {
+  BackgroundColor #F5F5F5
+  BorderColor #A9A9A9
+  ArrowColor #555555
+  FontColor #333333
+}
+skinparam note {
+  BackgroundColor #FFFFE0
+  BorderColor #A9A9A9
+  FontColor #333333
+}
+skinparam partition {
+  BackgroundColor #EEEEEE
+  BorderColor #A9A9A9
+  FontColor #333333
+}
+
+start
+
+partition "Data Layer (simulation-first)" {
+  :3GPP-compliant 5G NR SA handover simulator;
+  note right
+    - Primary training/evaluation data
+    - Radio layer calibrated
+      vs. NordicDat (RSRP/SINR)
+    - Real data: calibration +
+      face-validity only (never merged)
+  end note
+
+  :Scenario design — controlled drift & anomaly injection;
+  note right
+    - 4 drift types, 4 anomaly types
+    - Ground-truth labels by construction
+  end note
+
+  :Window feature extraction;
+  note right
+    - 5 s windows (1 s slide)
+    - HO KPIs (HOSR, RLF, ping-pong)
+      + radio (RSRP/RSRQ/SINR)
+  end note
+}
+
+partition "Monitoring Layer" {
+  fork
+    :Anomaly Detection;
+    note left
+      Unsupervised:
+      IF / LOF / OCSVM / PCA-AE / MLP-AE
+      Short-term faults
+      on HO KPI windows
+    end note
+  fork again
+    :Concept-Drift Detection;
+    note right
+      Stream: ADWIN / PH / KSWIN /
+      DDM / EDDM
+      + batch: MMD / Energy
+      Long-term distribution
+      shift on KPI streams
+    end note
+  end fork
+}
+
+partition "Adaptation Layer" {
+  if (Drift on watched KPI stream (HOSR/RLF)?) then (yes)
+    :Self-supervised filtered retraining;
+    note right
+      - Drop top-20% most suspicious windows
+      - Refit PCA-AE monitor -> avoids self-poisoning
+    end note
+  else (no)
+    :Keep current monitor;
+  endif
+}
+
+partition "Configuration–Performance & Decision Layer" {
+  :Configuration–performance surrogate;
+  note right
+    - HistGB point model +
+      conformal QuantileGB intervals
+    - (TTT, hysteresis, A3 offset)
+      -> (HOSR, RLF, ping-pong)
+  end note
+
+  :Inverse query — recommend feasible configuration;
+  note right
+    Maximize predicted HOSR under
+    operating constraints
+  end note
+
+  :Outputs & decision support;
+  note right
+    - Anomaly & drift alerts
+    - Model-validity status
+    - Reconfiguration recommendation
+      + uncertainty
+    - Counterfactual HOSR uplift
+  end note
+}
+
+stop
+@enduml

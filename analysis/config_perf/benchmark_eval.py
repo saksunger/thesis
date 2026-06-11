@@ -38,6 +38,7 @@ import numpy as np
 import pandas as pd
 
 from analysis.common.paths import DATA_PROC
+from analysis.common.plotstyle import apply_thesis_style
 from analysis.config_perf.data import (
     CONTROLLED_COLS,
     SCENARIO_COLS,
@@ -242,7 +243,8 @@ def _save_mae_bar(
 ) -> None:
     if point_summary.empty:
         return
-    fig, ax = plt.subplots(figsize=(6, 3.5))
+    apply_thesis_style()
+    fig, ax = plt.subplots(figsize=(6.5, 4))
     targets = list(point_summary["target"])
     means = point_summary["mae_mean"].to_numpy()
     stds = point_summary["mae_std"].to_numpy()
@@ -251,21 +253,21 @@ def _save_mae_bar(
                   color=["#1f77b4", "#d62728", "#2ca02c"][: len(targets)],
                   edgecolor="black", alpha=0.85)
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(targets, fontsize=10)
+    ax.set_xticklabels(targets, fontsize=12)
     ax.set_ylabel("CV MAE (mean ± std across folds)")
     ax.set_title("Phase 8 - per-target CV MAE (HistGB, group-5-fold)")
     ax.axhline(y=0.05, color="orange", linestyle="--", lw=1,
                label="C2 target (HOSR MAE = 0.05)")
     ax.grid(axis="y", alpha=0.3)
-    ax.legend(loc="upper right", fontsize=9)
+    ax.legend(loc="upper right", fontsize=11)
     for idx, (bar, val) in enumerate(zip(bars, means)):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + stds[idx] + 0.001,
-            f"{val:.4f}", ha="center", va="bottom", fontsize=9,
+            f"{val:.4f}", ha="center", va="bottom", fontsize=11,
         )
     fig.tight_layout()
-    fig.savefig(fp, dpi=140, bbox_inches="tight")
+    fig.savefig(fp, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -274,7 +276,8 @@ def _save_reliability_diagram(
 ) -> None:
     if cov_summary.empty:
         return
-    fig, axes = plt.subplots(1, 2, figsize=(11, 5), sharey=True)
+    apply_thesis_style()
+    fig, axes = plt.subplots(1, 2, figsize=(9.5, 4.6), sharey=True)
     colors = {"hosr": "#1f77b4", "rlf_rate": "#d62728", "ping_pong_rate": "#2ca02c"}
     has_variant = "variant" in cov_summary.columns
     variants = (
@@ -310,17 +313,17 @@ def _save_reliability_diagram(
         ax.set_aspect("equal", "box")
     axes[0].set_ylabel("empirical coverage (CV mean ± std)")
     if has_variant:
-        axes[-1].legend(loc="lower right", fontsize=9)
+        axes[-1].legend(loc="lower right", fontsize=11)
         # Hide unused legend on left panel to reduce visual noise
-        axes[0].legend(loc="lower right", fontsize=8)
+        axes[0].legend(loc="lower right", fontsize=11)
     else:
-        axes[0].legend(loc="lower right", fontsize=9)
+        axes[0].legend(loc="lower right", fontsize=11)
     fig.suptitle(
         "Phase 8 - prediction-interval reliability (naive vs split-conformal)",
-        fontsize=12,
+        fontsize=15,
     )
     fig.tight_layout()
-    fig.savefig(fp, dpi=140, bbox_inches="tight")
+    fig.savefig(fp, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -330,7 +333,8 @@ def _save_inverse_query_plot(
     cand = inv_result.candidates
     if cand.empty:
         return
-    fig, ax = plt.subplots(figsize=(7, 5))
+    apply_thesis_style()
+    fig, ax = plt.subplots(figsize=(7.5, 5.2))
     inf = cand[~cand["feasible"]]
     fea = cand[cand["feasible"]]
     # Plot all candidates as HOSR vs RLF_rate (PP_rate as marker size)
@@ -346,19 +350,30 @@ def _save_inverse_query_plot(
             s=20 + 800 * fea["ping_pong_rate"].clip(lower=0),
             c="#d62728", alpha=0.9, edgecolors="black", label="feasible",
         )
-        # Annotate the top-3 with their (TTT, hyst, A3)
+        # Annotate the top-3 with their (TTT, hyst, A3). The feasible points
+        # cluster near HOSR~1 at low RLF, so push the labels down into the
+        # empty centre-right of the plot and draw a short leader line to each
+        # point. This avoids both label-on-label overlap and collision with
+        # the multi-line title at the top.
         top3 = inv_result.top(3)
-        for _, row in top3.iterrows():
+        label_offsets = [(70, -48), (70, -80), (70, -112)]
+        for i, (_, row) in enumerate(top3.iterrows()):
             tag = (
-                f"TTT={int(row['ttt_ms'])}\n"
-                f"hyst={row['hyst_db']:.0f}dB\n"
-                f"A3={row['a3_off_db']:.0f}dB"
+                f"TTT={int(row['ttt_ms'])}, "
+                f"hyst={row['hyst_db']:.0f} dB, "
+                f"A3={row['a3_off_db']:.0f} dB"
             )
+            dx, dy = label_offsets[i % len(label_offsets)]
             ax.annotate(
                 tag, (row["rlf_rate"], row["hosr"]),
-                xytext=(8, 4), textcoords="offset points",
-                fontsize=7, color="#660000",
+                xytext=(dx, dy), textcoords="offset points",
+                fontsize=10, color="#660000",
+                bbox=dict(boxstyle="round,pad=0.25", fc="white",
+                          ec="#660000", alpha=0.9),
+                arrowprops=dict(arrowstyle="-", color="#660000", lw=0.6),
             )
+    # A little headroom under the (multi-line) title so nothing collides.
+    ax.set_ylim(-0.03, 1.08)
     ax.axhline(y=cfg.constraint_hosr, color="black", lw=0.5, linestyle=":")
     ax.axvline(x=cfg.constraint_rlf, color="black", lw=0.5, linestyle=":")
     ax.set_xlabel("predicted RLF_rate (/s)  — lower is better")
@@ -370,9 +385,9 @@ def _save_inverse_query_plot(
         f"(marker size = PP rate; n_feasible = {inv_result.n_feasible}/{len(cand)})"
     )
     ax.grid(alpha=0.3)
-    ax.legend(loc="lower left", fontsize=9)
+    ax.legend(loc="lower left", fontsize=11)
     fig.tight_layout()
-    fig.savefig(fp, dpi=140, bbox_inches="tight")
+    fig.savefig(fp, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
