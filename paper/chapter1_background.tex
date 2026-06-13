@@ -17,7 +17,7 @@ unambiguous, and reviews the control parameters, mobility KPIs and performance
 metrics that the monitoring framework operates on. Where it matters, the text
 marks which quantities are actually \emph{used} in the thesis and which are
 defined only for completeness and lie \emph{outside its scope}, so the reader can
-tie each concept either to the dataset of Chapter~\ref{ch:method} or to the
+tie each concept either to the dataset of Chapter~\ref{ch:data} or to the
 boundary of the work.
 
 \paragraph{Handover and the handover procedure.}
@@ -83,7 +83,7 @@ LTE~$\leftrightarrow$~5G-NSA technology switch) are treated as a separate
 phenomenon and are not represented in the handover model. Where real LTE/5G-NSA
 measurements are used later, they serve only to calibrate radio-layer KPI
 distributions and for a single fixed-RAT validity check, not as inter-RAT
-handover events to be analysed (Chapter~\ref{ch:method}).
+handover events to be analysed (Chapter~\ref{ch:data}).
 
 \textbf{By the node hosting the cells.}
 An \emph{intra-gNB} handover relocates the UE between two cells served by the
@@ -109,7 +109,7 @@ construction every modelled handover is an inter-gNB \emph{Xn}-based handover
 (TS~38.300 clause~9.2.3.2~\cite{ts38300}). Because the simulator itself generates
 the cells, the handover configurations and the resulting outcomes, no
 serving-cell proxy is required and the inter-RAT case never arises; the simulator
-is described in Chapter~\ref{ch:method}.
+is described in Chapter~\ref{ch:data}.
 
 \subsection{Handover control parameters: time-to-trigger and hysteresis}
 \label{subsec:ho-control}
@@ -249,7 +249,7 @@ SON/MRO and KPI specifications~\cite{ts38300,tr36839,ts28313,ts28554}.
   delay-sensitive traffic.
 \end{itemize}
 \textbf{Used in this thesis:} the 3GPP-compliant simulator of
-Chapter~\ref{ch:method} generates handover attempts, successes, failures, the
+Chapter~\ref{ch:data} generates handover attempts, successes, failures, the
 resulting handover success rate, radio link failures and ping-pong events
 directly from the modelled A3 and RLF/T310 state machine under the assigned
 (TTT, hysteresis, A3 offset) configuration. Handover success rate, RLF rate and
@@ -422,7 +422,7 @@ between the two empirical cumulative distribution functions; the underlying KS
 statistic is the classical goodness-of-fit measure popularised by
 Massey~\cite{massey1951ks}, used here in its two-sample form.
 In this thesis the KS statistic is used to calibrate the simulator against real
-measurements (Chapter~\ref{ch:method}), not as a runtime drift detector.
+measurements (Chapter~\ref{ch:data}), not as a runtime drift detector.
 
 \emph{Online} (sequential, streaming) detectors instead process the stream
 sample by sample and raise an alarm at the moment a change occurs, with bounded
@@ -545,7 +545,7 @@ configuration--performance surface is therefore what allows the thesis to ask
 whether observed drift degrades HO performance enough to justify a
 reconfiguration. Because no public dataset jointly exposes HO control parameters
 and the resulting outcomes, this relationship is realised through the
-3GPP-compliant simulator described in Chapter~\ref{ch:method}, whose radio layer
+3GPP-compliant simulator described in Chapter~\ref{ch:data}, whose radio layer
 is calibrated against real measurements; the present section only establishes
 \emph{why} the relationship is worth modelling.
 

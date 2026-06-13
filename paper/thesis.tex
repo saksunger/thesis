@@ -27,17 +27,10 @@
 % Look for figures in the local img/ folder (copied from results/.../figures).
 \graphicspath{{img/}}
 
-% Maximum section depth (chapter.section.subsection.subsubsection).
-\setcounter{secnumdepth}{4}
-
-% Listings settings (minted; requires -shell-escape + Pygments on compile).
-\setminted{breaklines,
-frame=lines,
-framesep=3mm,
-baselinestretch=1.1,
-fontsize=\small,
-% linenos
-}
+% Numbering depth: chapter.section.subsection (three layers max, per
+% supervisor feedback 2026-06-13). Deeper levels (subsubsection, paragraph)
+% render as unnumbered run-in headings.
+\setcounter{secnumdepth}{2}
 
 % ---- Title-page metadata -------------------------------------------------
 \fieldofstudy{Applied Computer Science}     % TODO: confirm field/spec code on title-page list
@@ -73,9 +66,8 @@ fontsize=\small,
 \bibliographystyle{dyplom}
 \bibliography{bibliography}
 
-% Lists of figures, listings, tables
+% Lists of figures and tables
 \listoffigures
-\listoflistings
 \listoftables
 
 % Appendices - comment out if not applicable

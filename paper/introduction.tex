@@ -1,4 +1,5 @@
-\chapter*{Introduction}
+\chapter{Introduction}
+\label{ch:intro}
 
 Every time a moving user crosses a cell border, the network must hand the radio connection over to the next cell without dropping it. This handover (HO) process is one of the key control functions in cellular communication systems, and it is under growing pressure: 5G and future radio access networks (RANs) pack more users into denser small cells at higher carrier frequencies, so the radio environment changes faster and each user performs more handovers~\cite{hoMgmtSurvey2025}. An incorrectly configured or poorly monitored handover can lead to HO failures, ping-pong effects, or radio link failures (RLF) that directly degrade the quality of service experienced by the user equipment (UE)~\cite{tr36839}. Reliable handover monitoring is therefore becoming a central concern in modern mobile networks.
 
@@ -8,7 +9,7 @@ This thesis focuses specifically on the intra-RAT inter-gNB HO scenario. In a de
 
 AI-based HO prediction and optimization have already been studied extensively~\cite{seq2seqMob2022,slicedDRL2024}, anomaly detection on cellular and O-RAN performance metrics is itself an active research area~\cite{oranAnomaly2025,oranBenchmark2023}, and concept drift detection and KPI forecasting are receiving growing attention in mobile-network monitoring~\cite{leaf,forecast5g2024}. These directions, however, are usually pursued separately: a unified HO monitoring framework that jointly handles anomaly detection, concept drift detection, and configuration--performance analysis for intra-RAT inter-gNB scenarios remains largely missing. This gap is the main motivation for the thesis, which investigates how HO behavior in 5G/6G RANs can be monitored more reliably by separating short-term anomalies from long-term behavioral changes and analyzing how these changes interact with the HO configuration parameters.
 
-\section*{The aim and scope of the thesis}
+\section{The aim and scope of the thesis}
 
 The main objective of this thesis is to develop a framework for adaptive HO monitoring under changing network conditions, combining anomaly detection, concept drift detection, drift-aware model maintenance, and configuration--performance modeling to improve the reliability of mobility management in 5G/6G networks. The emphasis is deliberately on \emph{monitoring}: the framework is not a new handover parameter-tuning control loop, since automatic tuning of time-to-trigger, hysteresis and cell individual offset is already standardized as mobility robustness optimization (MRO)~\cite{tr36839,ts28313}. The configuration--performance and reconfiguration component is instead intended as drift-aware, uncertainty-calibrated decision support that could feed such a function, and how it differs from MRO is made explicit in Section~\ref{sec:gap}.
 
@@ -64,4 +65,4 @@ configuration--performance and decision layer (own elaboration).}
 \label{fig:framework-overview}
 \end{figure}
 
-The remainder of this thesis is organized as follows. Chapter~\ref{ch:background} presents the background and related work. Chapter~\ref{ch:method} describes the datasets, the simulation environment, and the methodology. Chapter~\ref{ch:results} presents and discusses the experimental results. Finally, the last chapter summarizes the conclusions and outlines possible future research directions.
+The remainder of this thesis is organized as follows. Chapter~\ref{ch:background} presents the background and related work. Chapter~\ref{ch:data} describes the data sources and the 5G NR simulation environment, and Chapter~\ref{ch:method} the monitoring and modelling methodology. Chapter~\ref{ch:results} presents and discusses the experimental results. Finally, Chapter~\ref{ch:summary} summarizes the conclusions and outlines possible future research directions.

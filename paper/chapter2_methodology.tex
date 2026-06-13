@@ -1,13 +1,15 @@
 % !TEX encoding = UTF-8 Unicode
 % !TEX root = thesis.tex
 
-\chapter{Data and Methodology}
-\label{ch:method}
+\chapter{Data and Simulation Environment}
+\label{ch:data}
 
-This chapter describes how the data are produced, how the monitoring and
-modelling layers are constructed, and which methods, metrics, and tools are used
-to address the four research questions (RQ1--RQ4) set out in the Introduction. It also
-explains and justifies the main design choices. The central methodological
+This chapter sets out the research design, then describes how the experimental
+data are produced and validated: the data sources, the custom 5G NR handover
+simulator that generates the primary data, and the calibration of its radio
+layer against real measurements. The methods that operate on this data---the
+monitoring and modelling layers---are the subject of
+Chapter~\ref{ch:method}. The central
 decision is a \emph{simulation-first} strategy: the primary data are generated
 using a custom 3GPP-compliant 5G NR Standalone handover simulator, while publicly
 available drive-test measurements are used mainly to calibrate and sanity-check
@@ -281,6 +283,20 @@ and it is documented as a known limitation. The handover control plane itself is
 \emph{not} calibrated against real handover logs, because no public 5G~SA
 handover-event dataset exists; instead it is verified against the specification
 through the simulator's unit tests.
+
+\chapter{Methodology}
+\label{ch:method}
+
+Building on the data and simulation environment of Chapter~\ref{ch:data}, this
+chapter describes how the monitoring and modelling layers are constructed and
+evaluated, and which methods, metrics, and tools are used to address the four
+research questions (RQ1--RQ4) set out in the Introduction. It first explains how
+drift and anomalies are injected into the simulated timelines and how the static
+configuration sweep is built, then details the four analysis layers (anomaly
+detection, drift detection, drift-aware adaptive monitoring, and the
+configuration--performance surrogate), the end-to-end loop that combines them,
+the external-validation checks, and the implementation and reproducibility
+setup.
 
 \section{Scenario design: drift and anomaly injection}
 \label{sec:scenarios}
