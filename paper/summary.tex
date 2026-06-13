@@ -15,8 +15,8 @@ the aim and the four research questions:
 \begin{itemize}
   \item \textbf{RQ1 (anomaly detection):} unsupervised detectors catch
   structured faults well (measurement-glitch PR-AUC up to $0.858$, RLF-burst up
-  to $0.751$) but subtle faults---interference spikes and slow single-UE
-  degradation---stay near the noise floor; pooled over the timeline Isolation
+  to $0.751$) but subtle faults (interference spikes and slow single-UE
+  degradation) stay near the noise floor; pooled over the timeline Isolation
   Forest is the strongest single detector (PR-AUC $0.425$), and an ablation shows
   the RSRQ feature family is the most informative by a wide margin.
   \item \textbf{RQ2 (drift):} every injected drift is detected by every detector
@@ -24,7 +24,7 @@ the aim and the four research questions:
   trade-off---batch two-sample tests (Energy/MMD) fire in $\approx 3$\,s at a
   high false-alarm rate, whereas sequential detectors (ADWIN/DDM) keep false
   alarms near $0.005$ per second but react more slowly.
-  \item \textbf{RQ3 (adaptation):} the central---and somewhat surprising---result
+  \item \textbf{RQ3 (adaptation):} the central result, and a somewhat surprising one,
   is that \emph{how} a monitor is retrained matters more than \emph{whether} it
   is retrained. Naive periodic or drift-triggered refits roughly halve PR-AUC
   ($0.264 \rightarrow \approx 0.12$) through self-poisoning, whereas a

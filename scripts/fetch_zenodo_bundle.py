@@ -47,7 +47,12 @@ from pathlib import Path
 
 DEFAULT_CACHE_DIR = Path(".cache/zenodo")
 DEFAULT_REPO_ROOT = Path.cwd()
-DEFAULT_DOI: str | None = None  # set when the canonical deposit is minted
+# INTERIM (2026-06-12): points at the v1.0.0-rc1 SANDBOX rehearsal deposit.
+# Sandbox DOIs (10.5072) are not registered with DataCite, do not resolve
+# via doi.org, and the deposit is purged after ~6 months — replace with the
+# minted production DOI (10.5281/zenodo.<id>) at the canonical deposit cut
+# (see docs/zenodo_upload.md release checklist).
+DEFAULT_DOI: str | None = "10.5072/zenodo.509971"
 
 # Zenodo has two parallel deployments. Production DOIs use the 10.5281
 # prefix and live at zenodo.org; the throwaway test environment uses the

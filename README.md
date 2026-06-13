@@ -49,7 +49,7 @@ workflow in [`docs/zenodo_upload.md`](docs/zenodo_upload.md).
 ├── docs/                  # Plan, design ADRs, KPI schema, 3GPP refs, scenarios
 ├── simulator/             # MATLAB micro-simulator (3GPP A3 + RLF)
 │   ├── +channel/          # TR 38.901 path-loss + shadowing
-│   ├── +mobility/         # Waypoint + Gauss-Markov
+│   ├── +mobility/         # Waypoint (straight line per phase, Random-Direction redraw)
 │   ├── +ho/               # A3 event, RLF, ping-pong
 │   ├── +scenarios/        # Drift + anomaly scripts
 │   ├── +utils/            # Logging, IO, plotting helpers
@@ -117,7 +117,7 @@ make matlab-check
 make help                  # show all targets
 make matlab-check          # verify required toolboxes are installed + licensed
 make test                  # run all MATLAB unit tests (Phases 1–4c: 88 tests)
-make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest + zenodo bundle: 396 tests)
+make pytest                # run all Python unit tests (anomaly + drift + adaptive + config_perf + demo + tools + external_validation + repro manifest + zenodo bundle: 417 tests)
 make demo                  # Phase 1 channel/measurement smoke test
 make demo-ho               # Phase 2 HO event loop smoke test (single UE)
 make sweep-ttt             # Phase 2 small TTT × hysteresis sanity sweep (~30 s)

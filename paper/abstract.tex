@@ -22,7 +22,7 @@ samples are never mixed, so the benchmark stays clean.
 
 On this data the thesis builds and compares four layers: unsupervised anomaly
 detection on HO KPI windows, concept-drift detection on KPI streams, a
-drift-aware monitor that retrains the anomaly detector when drift is confirmed,
+drift-aware monitor that retrains the anomaly detector when drift is detected,
 and a configuration-performance surrogate that links HO parameters to mobility
 outcomes.
 
@@ -41,47 +41,47 @@ that how a monitor is kept up to date matters more than whether it is updated at
 all.
 
 }{
-% Streszczenie w jezyku polskim.
+% Streszczenie w języku polskim.
 
-Zarzadzanie przelaczeniem (handover, HO) jest jedna z najwazniejszych funkcji
-mobilnosci w sieciach radiowych 5G oraz powstajacych sieciach 6G. Zle
-skonfigurowane lub zle monitorowane przelaczenia powoduja utrate polaczenia
-radiowego (RLF), efekt ping-pong i pogorszenie jakosci uzytkowania, a wraz z
-zageszczaniem sieci kazdy uzytkownik wykonuje ich znacznie wiecej, co czyni
-niezawodne monitorowanie HO coraz wazniejszym. Praca bada jedno pytanie: czy
-monitorowanie HO staje sie bardziej niezawodne, gdy krotkoterminowe anomalie i
-dlugoterminowy dryf pojec sa traktowane lacznie, a nie osobno. Zakres ograniczono
+Zarządzanie przełączeniem (handover, HO) jest jedną z najważniejszych funkcji
+mobilności w sieciach radiowych 5G oraz powstających sieciach 6G. Źle
+skonfigurowane lub źle monitorowane przełączenia powodują utratę połączenia
+radiowego (RLF), efekt ping-pong i pogorszenie jakości użytkowania, a wraz z
+zagęszczaniem sieci każdy użytkownik wykonuje ich znacznie więcej, co czyni
+niezawodne monitorowanie HO coraz ważniejszym. Praca bada jedno pytanie: czy
+monitorowanie HO staje się bardziej niezawodne, gdy krótkoterminowe anomalie i
+długoterminowy dryf pojęć są traktowane łącznie, a nie osobno. Zakres ograniczono
 do przypadku intra-RAT inter-gNB w trybie Standalone (SA), jednego z
-najczestszych scenariuszy mobilnosci w gestych sieciach.
+najczęstszych scenariuszy mobilności w gęstych sieciach.
 
-Metodologie ksztaltuje praktyczne ograniczenie. Zaden publiczny zbior danych nie
-udostepnia jednoczesnie parametrow sterujacych HO (time-to-trigger, histereza,
-offset A3) oraz wynikajacych z nich wskaznikow KPI mobilnosci, dlatego glowne
-dane pochodza z wlasnego symulatora przelaczen 5G NR SA, zbudowanego zgodnie z
-odpowiednimi procedurami 3GPP. Jego warstwe radiowa skalibrowano wzgledem
-rzeczywistych danych z testow drogowych NordicDat, z dobra zgodnoscia dla RSRP i
-SINR oraz udokumentowana resztkowa rozbieznoscia dla RSRQ. Danych rzeczywistych
-nigdy nie laczono z symulowanymi, dzieki czemu benchmark pozostaje czysty.
+Metodologię kształtuje praktyczne ograniczenie. Żaden publiczny zbiór danych nie
+udostępnia jednocześnie parametrów sterujących HO (time-to-trigger, histereza,
+offset A3) oraz wynikających z nich wskaźników KPI mobilności, dlatego główne
+dane pochodzą z własnego symulatora przełączeń 5G NR SA, zbudowanego zgodnie z
+odpowiednimi procedurami 3GPP. Jego warstwę radiową skalibrowano względem
+rzeczywistych danych z testów drogowych NordicDat, z dobrą zgodnością dla RSRP i
+SINR oraz udokumentowaną resztkową rozbieżnością dla RSRQ. Danych rzeczywistych
+nigdy nie łączono z symulowanymi, dzięki czemu benchmark pozostaje czysty.
 
-Na tych danych zbudowano i porownano cztery warstwy: nienadzorowana detekcje
-anomalii w oknach KPI przelaczen, detekcje dryfu pojec w strumieniach KPI,
-monitor swiadomy dryfu, ktory ponownie uczy detektor anomalii po potwierdzeniu
-dryfu, oraz zastepczy model konfiguracja-wydajnosc laczacy parametry HO z
-wynikami mobilnosci.
+Na tych danych zbudowano i porównano cztery warstwy: nienadzorowaną detekcję
+anomalii w oknach KPI przełączeń, detekcję dryfu pojęć w strumieniach KPI,
+monitor świadomy dryfu, który ponownie uczy detektor anomalii po wykryciu
+dryfu, oraz zastępczy model konfiguracja--wydajność łączący parametry HO z
+wynikami mobilności.
 
-Wyrozniaja sie cztery wyniki. Detektory nienadzorowane dobrze wykrywaja usterki
-strukturalne (PR-AUC do $0,858$), lecz w wiekszosci pomijaja subtelne. Kazdy
-wstrzykniety dryf zostaje ostatecznie wykryty, wiec rzeczywistym wyborem
-projektowym jest kompromis miedzy opoznieniem detekcji a falszywymi alarmami, a
-nie to, czy dryf w ogole zostanie zauwazony. Naiwne ponowne uczenie monitora na
-biezacych danych przynosi efekt odwrotny: wchlania anomalie po dryfie do
-``normy'' i w przyblizeniu polowi jakosc detekcji, co jest efektem samozatrucia.
-Prosty samonadzorowany filtr, ktory usuwa najbardziej podejrzane okna przed
-ponownym uczeniem, naprawia to i ponad trzykrotnie zwieksza PR-AUC w fazie dryfu.
-Wreszcie zastepczy model oparty na gradient boosting trafnie przewiduje HOSR
-($R^2 = 0,96$) i, opakowany w konformalne przedzialy predykcji, napedza kompletna
-petle wykryj, rekomenduj, przywroc, z przewidzianym przez model wzrostem HOSR o
-$+0,62$. Ogolny wniosek jest taki, ze sposob aktualizowania monitora ma wieksze
-znaczenie niz to, czy jest on w ogole aktualizowany.
+Wyróżniają się cztery wyniki. Detektory nienadzorowane dobrze wykrywają usterki
+strukturalne (PR-AUC do $0,858$), lecz w większości pomijają subtelne. Każdy
+wstrzyknięty dryf zostaje ostatecznie wykryty, więc rzeczywistym wyborem
+projektowym jest kompromis między opóźnieniem detekcji a fałszywymi alarmami, a
+nie to, czy dryf w ogóle zostanie zauważony. Naiwne ponowne uczenie monitora na
+bieżących danych przynosi efekt odwrotny: wchłania anomalie po dryfie do
+``normy'' i w przybliżeniu o połowę obniża jakość detekcji, co jest efektem
+samozatrucia. Prosty samonadzorowany filtr, który usuwa najbardziej podejrzane
+okna przed ponownym uczeniem, naprawia to i ponad trzykrotnie zwiększa PR-AUC w
+fazie dryfu. Wreszcie zastępczy model oparty na gradient boosting trafnie
+przewiduje HOSR ($R^2 = 0,96$) i, opakowany w konformalne przedziały predykcji,
+napędza kompletną pętlę: wykryj, rekomenduj, przywróć, z przewidzianym przez
+model wzrostem HOSR o $+0,62$. Ogólny wniosek jest taki, że sposób aktualizowania
+monitora ma większe znaczenie niż to, czy jest on w ogóle aktualizowany.
 
 }

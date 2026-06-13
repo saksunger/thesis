@@ -143,3 +143,24 @@ Karta pracy dyplomowej*.pdf
 *.seed
 node_modules/
 package-lock.json
+
+# --- LaTeX build artifacts not covered above (latexmk + svg + acronym/lists) ---
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.lof
+paper/*.lot
+paper/*.lop
+paper/*.lol
+paper/svg-inkscape/
+
+# --- Cited-source PDF archive (local only) ---
+# 123 MB of publisher-copyrighted PDFs (IEEE/Elsevier/Springer/ACM) — do not
+# put these in git history; 3GPP specs are redistributable but kept local
+# with the rest for consistency. The bibliography itself is paper/bibliography.bib.
+bibliography/
+
+# --- Thesis-review reports (local working notes; reference thesis_guide.md) ---
+docs/review/
+
+# --- Presentation / working documents (local only) ---
+*.docx

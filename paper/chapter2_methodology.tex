@@ -6,12 +6,12 @@
 
 This chapter describes how the data are produced, how the monitoring and
 modelling layers are constructed, and which methods, metrics, and tools are used
-to address the research questions introduced in Section~\ref{sec:gap}. It also
+to address the four research questions (RQ1--RQ4) set out in the Introduction. It also
 explains and justifies the main design choices. The central methodological
 decision is a \emph{simulation-first} strategy: the primary data are generated
 using a custom 3GPP-compliant 5G NR Standalone handover simulator, while publicly
 available drive-test measurements are used mainly to calibrate and sanity-check
-the simulator rather than as the primary training source. The reason for this
+the simulator; they are not the primary training source. The reason for this
 choice is practical. Publicly available 5G Standalone datasets generally do not
 expose handover control parameters (such as time-to-trigger, hysteresis, or A3
 offset) together with the resulting mobility outcomes. A controlled simulation
@@ -28,7 +28,7 @@ predefined times, allowing the resulting behaviour to be analysed under
 controlled conditions. Four analysis layers are then built on top of this data:
 (i) unsupervised anomaly detection on handover KPI windows, (ii) concept-drift
 detection on KPI streams, (iii) a drift-aware adaptive monitor that updates the
-anomaly detector when persistent drift is detected, and (iv) a
+anomaly detector when a drift detector fires (subject to a cooldown), and (iv) a
 configuration--performance surrogate that links handover parameters to mobility
 outcomes and supports the analysis of possible reconfiguration strategies. Real
 measurements are used at two points only: to calibrate the simulator's
@@ -57,13 +57,16 @@ decision layer that recommends a reconfiguration with calibrated uncertainty
 
 The scope follows two binding decisions. First, the entire pipeline is restricted
 to \emph{5G NR Standalone intra-RAT inter-gNB Xn handover}. Each cell in the
-seven-cell layout is modelled as a distinct gNB, such that all handovers
+19-cell layout is modelled as a distinct gNB, such that all handovers
 correspond to inter-gNB Xn handovers (TS~38.300~\S9.2.3.2,
 TS~38.331~\S5.5.4)~\cite{ts38300,ts38331}. NSA, intra-gNB, N2-based, and
 inter-RAT handovers remain outside the scope of this thesis. Second, the
-monitored KPI family is restricted to \emph{mobility KPIs} as defined in
-TS~28.554~\S6.3.1--6.3.2~\cite{ts28554}: handover success rate (HOSR), handover
-failure rate, radio-link-failure (RLF) rate, and ping-pong rate, together with
+monitored KPI family is restricted to \emph{mobility KPIs}: the handover success
+rate (HOSR), standardized as an NG-RAN KPI in TS~28.554~\S6.6~\cite{ts28554},
+together with the handover failure rate, radio-link-failure (RLF) rate and
+ping-pong rate, which have no TS~28.554 KPI definition and are instead computed
+from the simulator's event log following the mobility-robustness conventions of
+TR~36.839 and TS~28.313~\cite{tr36839,ts28313}, plus
 the underlying radio measurements (serving and neighbour RSRP/RSRQ/SINR).
 Service-quality KPIs such as throughput and latency are excluded because the
 simulator implements the L1/L3 control plane but does not include a full L2 MAC
@@ -140,7 +143,7 @@ configuration inputs to the parquet outputs and ground-truth labels.
 ]
 % configuration input and the three-stage pipeline (central column)
 \node[io]  (in) at (0,0)    {\textbf{Inputs (config)}\\ seed, phases; HO parameters (TTT, hysteresis, A3 offset); drift/anomaly script};
-\node[box] (s1) at (0,-1.8) {\textbf{Stage 1 -- Geometry}\\ seven-cell hex grid $+$ per-UE trajectory};
+\node[box] (s1) at (0,-1.8) {\textbf{Stage 1 -- Geometry}\\ 19-cell hex grid $+$ per-UE trajectory};
 \node[box] (s2) at (0,-3.6) {\textbf{Stage 2 -- Radio} (per 10\,ms tick)\\ RSRP / RSRQ / SINR $+$ L3 filter};
 \node[box] (s3) at (0,-5.4) {\textbf{Stage 3 -- Handover state machine}\\ A3-based HO decision (TTT, hysteresis); RLF; ping-pong};
 % outputs, split into the separate artefacts the run writes
@@ -158,7 +161,7 @@ configuration inputs to the parquet outputs and ground-truth labels.
 \end{tikzpicture}
 \caption[Data flow of the 5G NR SA handover simulator]{Data flow of the 5G NR SA
 handover simulator. Configuration and a scenario script (drift and anomaly
-injection) drive three stages: \emph{geometry} (seven-cell hexagonal grid, each
+injection) drive three stages: \emph{geometry} (19-cell hexagonal grid, each
 cell a separate gNB, with a per-UE Random-Direction trajectory); per-tick
 \emph{radio} modelling (RSRP/RSRQ/SINR from the TR~38.901 channel model with
 LoS/NLoS, path loss and spatially correlated shadowing, smoothed by the layer-3
@@ -170,14 +173,16 @@ ground-truth labels and metadata for the analysis pipeline (own elaboration).}
 \end{figure}
 
 \paragraph{Topology and deployment.}
-The scenario is a seven-cell hexagonal grid (a centre cell plus the first ring of
-six), with an inter-site distance of 500\,m and an omnidirectional antenna at
-each cell centre. The default radio settings follow the 3GPP Urban Macro
-reference deployment~\cite{tr38913}: carrier 3.5\,GHz (band n78), 100\,MHz
+The scenario is a 19-cell two-tier hexagonal grid (a centre cell plus two
+surrounding rings of six and twelve), with an inter-site distance of 500\,m and
+an omnidirectional antenna at each cell centre. The layout and inter-site distance follow the 3GPP Urban
+Macro reference scenario~\cite{tr38913}; the radio settings use common
+urban-macro evaluation assumptions: carrier 3.5\,GHz (band n78), 100\,MHz
 bandwidth carried on 273 resource blocks at 30\,kHz subcarrier
-spacing~\cite{ts38104}, base-station height 25\,m, UE height 1.5\,m,
-transmit power 49\,dBm, antenna gain 8\,dBi and a UE noise figure of 7\,dB. Each
-of the seven cells is treated as a separate gNB, so every handover the simulator
+spacing~\cite{ts38104}, base-station height 25\,m and UE height 1.5\,m (the
+TR~38.901 UMa defaults~\cite{tr38901}), transmit power 49\,dBm, antenna gain
+8\,dBi and a UE noise figure of 7\,dB. Each
+of the 19 cells is treated as a separate gNB, so every handover the simulator
 produces is, by construction, an inter-gNB Xn handover.
 
 \paragraph{Trajectory.}
@@ -194,7 +199,7 @@ and any UE that would leave the area is simply respawned at a random point.
 
 \paragraph{Radio measurements.}
 For every tick and every cell, the simulator computes RSRP, RSRQ and SINR from
-the 3GPP TR~38.901 channel model~\cite{tr38901}. Three ingredients are combined.
+the 3GPP TR~38.901 channel model~\cite{tr38901}.
 First, a line-of-sight (LoS) or non-line-of-sight (NLoS) state is drawn per cell
 from the TR~38.901 LoS-probability formula and is correlated over distance so it
 does not flicker tick to tick. Second, the path loss is the TR~38.901 Urban Macro
@@ -257,7 +262,8 @@ sufficient when the simulator is used as independent training data, and no
 stronger claim of statistical identity is made. The serving-cell RSRP, RSRQ
 and SINR marginals are compared against the NordicDat \texttt{op1/5G-NSA/LTE\_B20}
 segment with the two-sample Kolmogorov--Smirnov statistic
-(\texttt{scipy.stats.ks\_2samp})~\cite{massey1951ks}. The KS statistic, together
+(\texttt{scipy.stats.ks\_2samp}), the two-sample form of the classical KS
+goodness-of-fit statistic~\cite{massey1951ks}. The KS statistic, together
 with a 200-replicate bootstrap 95\% confidence interval and the median offset
 $\Delta p_{50}$ (sim median minus real median), is the reported quantity.
 P-values are deliberately not used as the headline metric: at tens of thousands
@@ -381,8 +387,8 @@ scope, which gives both an overall anomaly label and per-type labels.
 
 \paragraph{Evaluation.}
 The primary metric is the area under the precision--recall curve (PR-AUC), with
-ROC-AUC reported alongside; precision--recall is preferred because anomalies are
-rare. The task is in fact strongly imbalanced: at the 5\,s window the positive
+ROC-AUC recorded in the accompanying result artefacts; precision--recall is
+preferred because anomalies are rare. The task is in fact strongly imbalanced: at the 5\,s window the positive
 (anomalous) windows account for only about $2.4$--$7.0\%$ of the windows of a
 given anomaly type (roughly $159$--$376$ positive against $5\,000$--$7\,200$
 negative windows, i.e.\ an imbalance ratio between about $1{:}13$ and $1{:}41$).
@@ -481,13 +487,13 @@ deployment-context features (RSRP/SINR/RSRQ at the 10th/50th/90th percentiles),
 and the three targets are HOSR, RLF rate and ping-pong rate (handover-failure
 rate is omitted as the complement of HOSR).
 
-Two model heads are used. A histogram gradient-boosting regressor
+The surrogate has two heads. A histogram gradient-boosting regressor
 (\texttt{HistGradient\-Boosting\-Regressor}, 500 iterations, learning rate 0.05,
 depth 6) provides the point estimate~\cite{pedregosa2011scikit}. For
 uncertainty, a quantile gradient-boosting model is wrapped in split-conformal
 calibration (conformalised quantile regression)~\cite{romano2019cqr}: a
 calibration split (35\% of the training portion) is held out, conformity scores
-widen the nominal 5\%/95\% quantile band, and the result is a 90\% prediction
+adjust (typically widen) the nominal 5\%/95\% quantile band, and the result is a 90\% prediction
 interval with a finite-sample coverage guarantee. Models are evaluated with
 grouped 5-fold cross-validation, where all ten seed replicates of a
 configuration stay in the same fold so the model is always tested on unseen

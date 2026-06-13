@@ -104,7 +104,7 @@ within one technology, without the additional complications of a technology
 switch (inter-RAT) or a purely internal relocation (intra-gNB); it is the most
 frequent mobility event in a dense 5G deployment. In this thesis
 the scenario is realised directly in a 3GPP-compliant system-level simulator: the
-seven-cell hexagonal layout is treated as seven distinct gNBs, so that by
+19-cell two-tier hexagonal layout is treated as 19 distinct gNBs, so that by
 construction every modelled handover is an inter-gNB \emph{Xn}-based handover
 (TS~38.300 clause~9.2.3.2~\cite{ts38300}). Because the simulator itself generates
 the cells, the handover configurations and the resulting outcomes, no
@@ -174,8 +174,8 @@ handover monitoring.
 \begin{itemize}
   \item \textbf{RSRP (Reference Signal Received Power)}: the linear average
   received power of the resource elements carrying the (synchronisation-signal)
-  reference signal, in dBm; reportable values span roughly
-  $-156$ to $-31$\,dBm~\cite{ts38215,ts38331}. RSRP is the primary
+  reference signal, in dBm; the layer-3 reporting range is
+  $-156$ to $-31$\,dBm with 1\,dB resolution~\cite{ts38215,ts38133}. RSRP is the primary
   \emph{coverage} indicator and the default trigger quantity for event~A3, so it
   is the most direct correlate of when and why a handover occurs.
   \item \textbf{RSRQ (Reference Signal Received Quality)}: defined as
@@ -294,17 +294,20 @@ therefore model ``normal'' and score how far each window departs from it.
 \subsection{Families of unsupervised detectors and their working principles}
 \label{subsec:anomaly-methods}
 
-Unsupervised detectors are often grouped into statistical/probabilistic methods,
-distance- and density-based methods, boundary- or domain-based methods,
-isolation/ensemble methods, and reconstruction-based methods (including, more
-recently, deep autoencoders)~\cite{chandola2009anomaly}. The five detectors
+Surveys organise anomaly detectors by the principle used to model
+normality~\cite{chandola2009anomaly}; for the methods compared in this thesis it
+is convenient to distinguish statistical/probabilistic methods, distance- and
+density-based methods, boundary- or domain-based methods, isolation/ensemble
+methods, and reconstruction-based methods (including, more recently, deep
+autoencoders). The five detectors
 described below span these families; all are implemented with
 \texttt{scikit-learn}~\cite{pedregosa2011scikit}.
 
 \paragraph{Isolation Forest (isolation/ensemble-based).}
 Isolation Forest builds many random binary trees. At each step a tree picks a
 random feature and a random split value~\cite{liu2008isolation}. Because
-anomalies are few and different, a tree isolates them after only a few splits,
+anomalies are ``few and different''~\cite{liu2008isolation}, a tree isolates
+them after only a few splits,
 while normal points sit in dense regions and need many more. The anomaly score is
 the average number of splits needed to reach a point across the trees: a short
 path means the point is likely anomalous. The method works by isolation rather
@@ -337,7 +340,9 @@ Principal Component Analysis finds the low-dimensional linear subspace that hold
 most of the variance of the normal data~\cite{jolliffe2002pca}. A point is
 projected onto that subspace and mapped back, and the \emph{reconstruction error}
 (the distance between the point and its reconstruction) is used as the anomaly
-score~\cite{shyu2003pca}. Normal points lie close to the subspace and reconstruct
+score; this is closely related to early PCA-based detectors that score anomalies
+with statistics over the major and minor principal
+components~\cite{shyu2003pca}. Normal points lie close to the subspace and reconstruct
 well (low error), whereas anomalies that break the usual correlations among KPIs
 reconstruct poorly (high error). This makes the method well suited to anomalies
 that show up as a breakdown of the normal \emph{correlation structure} between
@@ -402,8 +407,8 @@ Drift is also characterised by its \emph{shape} over
 time~\cite{gama2014survey}: \emph{sudden} (an abrupt switch from one regime to
 another), \emph{gradual} (an increasing mix of the new regime), \emph{incremental}
 (a slow continuous shift), and \emph{recurring} (regimes that return, e.g.\
-day/night or seasonal patterns). Knowing the shape matters because different
-detectors are tuned to different shapes.
+day/night or seasonal patterns). Different detector families are sensitive to
+different shapes, which is one reason the benchmark covers several.
 
 \subsection{Offline measures vs.\ online detectors}
 \label{subsec:drift-methods}
@@ -413,7 +418,9 @@ Methods for quantifying drift fall into two broad groups. \emph{Offline}
 later window and answer ``\emph{how much} has the distribution changed between
 these two periods?''. The main example is the \textbf{Kolmogorov--Smirnov (KS)
 two-sample test}, a non-parametric test whose statistic is the largest gap
-between the two empirical cumulative distribution functions~\cite{massey1951ks}.
+between the two empirical cumulative distribution functions; the underlying KS
+statistic is the classical goodness-of-fit measure popularised by
+Massey~\cite{massey1951ks}, used here in its two-sample form.
 In this thesis the KS statistic is used to calibrate the simulator against real
 measurements (Chapter~\ref{ch:method}), not as a runtime drift detector.
 
@@ -436,28 +443,30 @@ The first family runs a \emph{sequential statistic over the raw stream}:
   abrupt changes in the mean~\cite{page1954cusum,gama2014survey}.
   \item \textbf{KSWIN} (Kolmogorov--Smirnov WINdowing) runs the KS test between a
   short sliding window and a reference window, firing when their distributions
-  differ; it is the streaming counterpart of the offline KS test above.
+  differ~\cite{raab2020kswin}; it is the streaming counterpart of the offline KS
+  test above.
 \end{itemize}
 
 The second family is \emph{error-rate (performance-based)} and watches a binary
-signal (here, the fraction of windows the monitor flags), reacting when that rate
-worsens:
+signal (here, a binarised version of the KPI stream: whether each sample
+deviates from a running mean by more than a z-score threshold), reacting when
+the rate of deviations worsens:
 \begin{itemize}
   \item \textbf{DDM} (Drift Detection Method) tracks the running error rate and
   its standard deviation, raising first a warning and then a drift alarm when the
-  rate climbs past calibrated thresholds~\cite{gama2014survey}.
+  rate climbs past calibrated thresholds~\cite{gama2004ddm,gama2014survey}.
   \item \textbf{EDDM} (Early Drift Detection Method) instead tracks the distance
   between consecutive errors, which makes it more sensitive to slow, gradual
-  drift.
+  drift~\cite{baenagarcia2006eddm}.
 \end{itemize}
 
 The third family is \emph{batch two-sample tests}, which compare a recent window
 against a reference window using a distributional distance:
 \begin{itemize}
   \item \textbf{MMD} (Maximum Mean Discrepancy) measures the distance between the
-  two samples in a kernel feature space.
+  two samples in a kernel feature space~\cite{gretton2012mmd}.
   \item \textbf{Energy distance} measures it from the pairwise Euclidean
-  distances within and between the two samples.
+  distances within and between the two samples~\cite{szekely2013energy}.
 \end{itemize}
 The streaming and binarised detectors are implemented with the \texttt{river}
 library~\cite{montiel2021river}; the batch tests are computed directly from their
@@ -468,8 +477,9 @@ As with the anomaly detectors, the seven drift detectors are chosen to cover the
 main detection families once each rather than to enumerate every algorithm:
 sequential statistics over the raw stream (ADWIN, Page--Hinkley, KSWIN),
 error-rate monitoring (DDM, EDDM), and batch two-sample distance tests (MMD,
-energy distance). Methods that would only duplicate a family already present are
-therefore left out: HDDM is another error-rate detector alongside DDM/EDDM, and
+energy distance). The same de-duplication rule as in
+Section~\ref{subsec:anomaly-methods} applies: HDDM is another error-rate
+detector alongside DDM/EDDM, and
 the popular distribution-distance measures (KL and Jensen--Shannon divergence,
 Wasserstein distance) target the same two-sample comparison that MMD and the
 energy distance already provide. Cluster-drift detection is excluded for the same
@@ -543,11 +553,11 @@ is calibrated against real measurements; the present section only establishes
 \label{sec:gap}
 
 Machine learning is increasingly applied to mobility management and handover
-optimization in 5G and beyond networks~\cite{hoMgmtSurvey2025}. The relevant
-literature can be grouped into two directions that map onto the building blocks
-of this thesis: (i) AI-based handover \emph{prediction and control}, and (ii)
-handover \emph{anomaly detection} together with \emph{cellular KPI concept
-drift}. Each direction is valuable on its own, but their integration into a
+optimization in 5G and beyond networks~\cite{hoMgmtSurvey2025}. Two strands of
+prior work matter here: (i) AI-based handover \emph{prediction and control},
+which tries to act on handovers before they go wrong, and (ii) handover
+\emph{anomaly detection} together with \emph{cellular KPI concept drift}, which
+watches handover behaviour for trouble. Each is valuable on its own, but their integration into a
 single handover-specific monitoring framework remains limited.
 
 \subsection{AI-based handover prediction and control}
@@ -581,27 +591,29 @@ over time as the network environment changes.
 
 The second stream is closer to the monitoring focus of this thesis. On the
 anomaly side, recent O-RAN studies integrate anomaly detection into handover
-support. One work develops two anomaly-detection algorithms for 5G O-RAN: the
-first identifies user equipment at risk of throughput degradation from the
-serving cell's KPIs to enable proactive handover, and the second filters
-neighbour cells with anomalous radio conditions to reduce unreliable handover
-candidates~\cite{oranAnomaly2025}. A complementary benchmark compares several
-anomaly-detection algorithms (Local Outlier Factor, Isolation Forest, Robust
-Covariance, Logistic Regression, Naive Bayes, SVM and Random Forest) in the
-O-RAN traffic-steering module and reports Random Forest as the strongest for
-handover prediction~\cite{oranBenchmark2023}. These works show that KPI-focused
+support. One work places anomaly detection at two different points of the 5G
+O-RAN handover decision: a serving-side detector watches each user's KPIs for
+early signs of throughput trouble (a trigger for proactive handover), while a
+neighbour-side detector screens the candidate cells and discards those whose
+radio conditions look abnormal, shrinking the candidate set by roughly
+40\%~\cite{oranAnomaly2025}. A complementary benchmark in the O-RAN
+traffic-steering module pits three unsupervised detectors (Local Outlier
+Factor, Isolation Forest, Robust Covariance) against four supervised
+classifiers (Logistic Regression, Naive Bayes, SVM, Random Forest) and reports
+Random Forest as the strongest for handover prediction~\cite{oranBenchmark2023}. These works show that KPI-focused
 anomaly detection is both feasible and operationally meaningful for handover
 support, yet they remain centred on short-term anomaly identification and do not
 explicitly treat concept drift, long-term model obsolescence or adaptive model
 maintenance.
 
-On the drift side, the most relevant work is LEAF, which characterises concept
-drift in operational cellular KPI estimation using more than four years of data
-from a major provider and shows that drift occurs across many KPIs regardless of
-model family, training-set size or time interval; it further shows that frequent
-periodic retraining is not always sufficient and can even reduce accuracy, and
-proposes a pipeline that detects drift, explains the contributing features and
-mitigates it through forgetting and oversampling~\cite{leaf}. This is strong
+On the drift side, the most relevant work is LEAF~\cite{leaf}. Analysing more
+than four years of KPI data from a major US operator, the study establishes
+three facts that matter for this thesis: cellular KPI models age, whatever
+model family or training-set size is chosen; the obvious remedy of refitting on
+fresh data is unreliable and at times leaves the model worse off; and a
+targeted response (find the drift, identify the features that carry it, then
+retrain with forgetting and over-sampling) recovers accuracy where blind
+refits do not. This is strong
 evidence that long-term cellular models degrade under changing conditions, but
 its focus is general KPI prediction rather than handover-specific monitoring: it
 does not model HO control parameters (TTT, hysteresis, CIO) nor analyse HO
@@ -642,7 +654,7 @@ Not handover-specific; does not model HO control parameters (TTT, hysteresis, CI
 
 ML-driven AD for 5G O-RAN~\cite{oranAnomaly2025} & 2025 &
 Proactive anomaly detection for throughput degradation and post-HO failure reduction &
-AutoEncoder, AutoEncoder+1SVM, Random Forest; serving/neighbour-cell KPIs &
+Isolation Forest, Random Forest, AutoEncoder, AE-1SVM; serving/neighbour-cell KPIs &
 Separates serving- vs neighbour-side anomalies and links them to proactive HO support &
 No concept drift or long-term model validity; no configuration--performance model \\
 
@@ -676,7 +688,7 @@ Deep Reinforcement Learning (PPO) &
 Example of adaptive, learning-based HO control &
 No anomaly detection, drift monitoring, or maintenance strategy \\
 
-A-MMUF framework~\cite{ammuf2022} & 2022 &
+A-MMUF framework~\cite{ammuf2022} & 2023 &
 Proactive mobility-management framework &
 Mobility Prediction Models (MPMs) &
 Framework-level reference for the reactive$\rightarrow$proactive shift &
@@ -696,7 +708,7 @@ Prediction-only; no anomaly detection, drift, or config--performance modelling \
 
 Multi-modal adaptive HO control for O-RAN~\cite{multimodalHO2026} & 2026 &
 Combined ML mobility prediction and RL handover control in O-RAN &
-Random-Forest prediction (rApp) + PPO actor--critic control (xApp) &
+Random-Forest forecasting $+$ PPO actor--critic cell ranking (rApp); HO execution in the xApp &
 Very recent integration of prediction and control across O-RAN interfaces &
 No drift monitoring or anomaly/configuration--performance maintenance layer \\
 \bottomrule
@@ -718,12 +730,12 @@ into a single handover-focused framework that simultaneously
 \paragraph{Relation to standardized mobility robustness optimization.}
 A natural objection is that adjusting handover parameters in response to
 degrading mobility performance is already standardized as \emph{mobility
-robustness optimization} (MRO), the SON function first introduced for LTE in
-Release~9~\cite{tr36839} and specified for 5G management and orchestration in
+robustness optimization} (MRO), the SON function introduced for LTE and
+specified for 5G management and orchestration in
 TS~28.313~\cite{ts28313}. In MRO the function ``detects handover issues (e.g.\
-too-late, too-early and handover-to-a-wrong-cell) in intra-RAT or inter-RAT
-mobility by analysing reports from UEs and network-side information, and acts to
-mitigate the issues by adjusting handover-related parameters''~\cite{ts28313},
+too late HO, too early HO and HO to a wrong cell) in intra-RAT or inter-RAT
+mobility by analysing reports from UEs and network side information, and acts to
+mitigate the HO issues by adjusting HO related parameters''~\cite{ts28313},
 chiefly time-to-trigger, hysteresis and cell individual offset, with the
 problem-detection inputs (UE history, RLF reports, handover performance
 measurements) defined in TS~28.627/28.628~\cite{ts28627,ts28628}. This thesis is
@@ -753,12 +765,9 @@ precursor signal, not an event-level forecast: the system reacts to the onset of
 drift (with a detection latency) and does not predict the failure of an
 individual handover before it occurs, which would be a proactive
 prediction problem of the kind discussed in
-Section~\ref{subsec:rw-prediction} and is left to future work. Recent
-machine-learning work on O-RAN mobility points in the same direction,
-moving model-drift detection and retraining into the RAN intelligent
-controller~\cite{hoMgmtSurvey2025}, which confirms the relevance of the problem
-while underlining that the contribution here is the \emph{monitoring}
-methodology, not the parameter-tuning action.
+Section~\ref{subsec:rw-prediction} and is left to future work. The
+contribution here is therefore the \emph{monitoring} methodology, not the
+parameter-tuning action.
 
 \textbf{Research gap.} These contributions have largely been pursued separately:
 to the best of our knowledge, a handover-specific framework that jointly
@@ -768,8 +777,9 @@ is still limited. This thesis targets that gap. Its primary contribution is not
 another handover optimization algorithm but an anomaly- and drift-aware
 \emph{monitoring} framework for intra-RAT inter-gNB handover behaviour in dynamic
 5G/6G environments, whose central, somewhat counter-intuitive finding is that
-\emph{how} a drift-aware monitor is retrained (self-supervised filtering to avoid
-self-poisoning) matters more than \emph{whether} it is retrained. On top of this
+an unfiltered refit can do more harm than no refit at all: drift-aware
+retraining pays off only when the retraining pool is first cleaned by a
+self-supervised filter against self-poisoning. On top of this
 monitoring layer, a configuration--performance surrogate with calibrated
 uncertainty is used as decision support to test whether observed drift degrades
 handover performance enough to warrant a reconfiguration, with the predicted

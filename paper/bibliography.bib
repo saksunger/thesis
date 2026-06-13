@@ -69,8 +69,8 @@
   institution = {3rd Generation Partnership Project (3GPP)},
   type        = {Technical Report (TR)},
   number      = {36.839},
-  year        = {2013},
-  note        = {Release 11}
+  year        = {2012},
+  note        = {Release 11, v11.1.0}
 }
 
 @techreport{ts28313,
@@ -85,7 +85,7 @@
 
 @techreport{ts28627,
   author      = {{3GPP}},
-  title       = {{Telecommunication management; Self-Organizing Networks (SON); Concepts and requirements}},
+  title       = {{Telecommunication management; Self-Organizing Networks (SON) Policy Network Resource Model (NRM) Integration Reference Point (IRP); Requirements}},
   institution = {3rd Generation Partnership Project (3GPP)},
   type        = {Technical Specification (TS)},
   number      = {28.627},
@@ -120,7 +120,7 @@
   type        = {Technical Report (TR)},
   number      = {38.901},
   year        = {2020},
-  note        = {Release 17}
+  note        = {Release 16}
 }
 
 @techreport{ts38104,
@@ -139,8 +139,8 @@
   institution = {3rd Generation Partnership Project (3GPP)},
   type        = {Technical Report (TR)},
   number      = {38.913},
-  year        = {2020},
-  note        = {Release 17}
+  year        = {2024},
+  note        = {Release 18}
 }
 
 % --------------------------------------------------------------------------- %
@@ -270,13 +270,6 @@
   year    = {1951}
 }
 
-@book{siddiqi2006scorecards,
-  author    = {Siddiqi, Naeem},
-  title     = {Credit Risk Scorecards: Developing and Implementing Intelligent Credit Scoring},
-  publisher = {John Wiley \& Sons},
-  year      = {2006}
-}
-
 @article{montiel2021river,
   author  = {Montiel, Jacob and Halford, Max and Mastelini, Saulo Martiello and Bolmier, Geoffrey and Sourty, Raphael and Vaysse, Robin and others},
   title   = {River: Machine Learning for Streaming Data in {P}ython},
@@ -291,7 +284,7 @@
 % Handover configuration--performance / mobility robustness optimization
 % --------------------------------------------------------------------------- %
 @inproceedings{jansen2010hpo,
-  author    = {Jansen, Tobias and Balan, Irina and Turk, John and Moerman, Ingrid and K{\"u}rner, Thomas},
+  author    = {Jansen, Thomas and Balan, Irina and Turk, John and Moerman, Ingrid and K{\"u}rner, Thomas},
   title     = {Handover Parameter Optimization in {LTE} Self-Organizing Networks},
   booktitle = {2010 IEEE 72nd Vehicular Technology Conference (VTC2010-Fall)},
   pages     = {1--5},
@@ -306,12 +299,12 @@
 
 % [1] Concept drift in cellular KPI prediction (drift detection + mitigation).
 @article{leaf,
-  author  = {Liu, Shinan and Bronzino, Francesco and Schmitt, Paul and Bhagoji, Arjun Nitin and Feamster, Nick and Crespo, H{\'e}ctor Garc{\'i}a and Coyle, Timothy and Ward, Brian},
+  author  = {Liu, Shinan and Bronzino, Francesco and Schmitt, Paul and Bhagoji, Arjun Nitin and Feamster, Nick and Garcia Crespo, H{\'e}ctor and Coyle, Timothy and Ward, Brian},
   title   = {{LEAF}: Navigating Concept Drift in Cellular Networks},
   journal = {Proceedings of the ACM on Networking (CoNEXT)},
   volume  = {1},
   number  = {CoNEXT2},
-  pages   = {1--24},
+  pages   = {7:1--7:24},
   year    = {2023}
 }
 
@@ -335,7 +328,7 @@
 
 % [4] Forecasting 5G metrics on a commercial/operational platform; mobility-aware HO.
 @article{forecast5g2024,
-  author  = {Almeida, Andr{\'e} and Rito, Pedro and Br{\'a}s, Susana and Pinto, Filipe Cabral and Sargento, Susana},
+  author  = {Almeida, Ana and Rito, Pedro and Br{\'a}s, Susana and Pinto, Filipe Cabral and Sargento, Susana},
   title   = {A Machine Learning Approach to Forecast {5G} Metrics in a Commercial and Operational {5G} Platform},
   journal = {Computer Communications},
   volume  = {228},
@@ -375,13 +368,13 @@
 
 % [8] Proactive mobility management framework (A-MMUF).
 @article{ammuf2022,
-  author  = {Zaidi, Ali and Farooq, Hasan and Rizwan, Ali and Abu-Dayya, Adnan and Imran, Ali},
+  author  = {Zaidi, Syed Muhammad Asad and Farooq, Hasan and Rizwan, Ali and Abu-Dayya, Adnan and Imran, Ali},
   title   = {A Framework to Address Mobility Management Challenges in Emerging Networks},
   journal = {IEEE Wireless Communications},
-  volume  = {29},
-  number  = {5},
-  pages   = {76--83},
-  year    = {2022}
+  volume  = {30},
+  number  = {4},
+  pages   = {96--103},
+  year    = {2023}
 }
 
 % --- Optional newer additions to strengthen / refresh the review --------------
@@ -411,4 +404,56 @@
   title   = {Graph Neural Networks for {O-RAN} Mobility Management: A Link Prediction Approach},
   journal = {arXiv preprint arXiv:2502.02170},
   year    = {2025}
+}
+
+% --------------------------------------------------------------------------- %
+% Primary references for the drift-detector family definitions (Chapter 1).
+% Archived in bibliography/: gretton2012mmd, raab2020kswin, szekely2013energy,
+% gama2004ddm, baenagarcia2006eddm. All five archived (2026-06-12).
+
+@inproceedings{gama2004ddm,
+  author    = {Gama, Jo{\~a}o and Medas, Pedro and Castillo, Gladys and Rodrigues, Pedro},
+  title     = {Learning with Drift Detection},
+  booktitle = {Advances in Artificial Intelligence -- SBIA 2004},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {3171},
+  pages     = {286--295},
+  publisher = {Springer},
+  year      = {2004}
+}
+
+@inproceedings{baenagarcia2006eddm,
+  author    = {Baena-Garc{\'i}a, Manuel and del Campo-{\'A}vila, Jos{\'e} and Fidalgo, Ra{\'u}l and Bifet, Albert and Gavald{\`a}, Ricard and Morales-Bueno, Rafael},
+  title     = {Early Drift Detection Method},
+  booktitle = {Fourth International Workshop on Knowledge Discovery from Data Streams},
+  pages     = {77--86},
+  year      = {2006}
+}
+
+@article{raab2020kswin,
+  author  = {Raab, Christoph and Heusinger, Moritz and Schleif, Frank-Michael},
+  title   = {Reactive Soft Prototype Computing for Concept Drift Streams},
+  journal = {Neurocomputing},
+  volume  = {416},
+  pages   = {340--351},
+  year    = {2020}
+}
+
+@article{gretton2012mmd,
+  author  = {Gretton, Arthur and Borgwardt, Karsten M. and Rasch, Malte J. and Sch{\"o}lkopf, Bernhard and Smola, Alexander},
+  title   = {A Kernel Two-Sample Test},
+  journal = {Journal of Machine Learning Research},
+  volume  = {13},
+  pages   = {723--773},
+  year    = {2012}
+}
+
+@article{szekely2013energy,
+  author  = {Sz{\'e}kely, G{\'a}bor J. and Rizzo, Maria L.},
+  title   = {Energy Statistics: A Class of Statistics Based on Distances},
+  journal = {Journal of Statistical Planning and Inference},
+  volume  = {143},
+  number  = {8},
+  pages   = {1249--1272},
+  year    = {2013}
 }

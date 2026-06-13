@@ -57,6 +57,8 @@ Every binding architecture decision goes here. Format:
 
 Default = waypoint for unit tests + small-scale demos, GM for sweep population.
 
+> *Correction (2026-06-12, thesis review F-15):* Gauss-Markov was never implemented. All production runs (timelines, sweeps, calibration) use the scripted waypoint model with a per-phase Random-Direction redraw (straight line per phase, direction re-drawn at every phase boundary, out-of-area UEs respawned). The thesis (chapter2, "Trajectory") describes the implemented behaviour correctly.
+
 **Consequences.**
 - (+) Reproducibility via seed.
 - (−) Neither is realistic at city scale. Acceptable for thesis scope (HO event statistics, not traffic engineering).
@@ -234,12 +236,14 @@ Both written via `parquet.write` from MATLAB Communications Toolbox / `parquetwr
 
 ---
 
-## ADR-15 — KPI scope: mobility KPIs only (TS 28.554 §6.3.1–2)
+## ADR-15 — KPI scope: mobility KPIs only (TS 28.554 §6.6)
 *2026-06-05 · accepted (orthogonal to ADR-14; tightens the KPI axis that ADR-14 left implicit)*
 
 **Context.** ADR-14 locked the *HO-type / RAT* axis (NR SA, intra-RAT, inter-gNB Xn) but did not address *which KPI family* the thesis monitors over those handovers. The earlier conference paper (`paper.tex`) listed downlink throughput alongside RSRP/SINR as a monitored KPI, implying a service-quality (3GPP TS 28.554 §6.3.6) monitoring scope. The current simulator implements PHY + RRC (L1 + L3) faithfully but **does not implement L2 MAC scheduling, MCS feedback, BLER curves, or any offered-load model** — so throughput, packet drop rate, and latency cannot be reported in a 3GPP-faithful way without weeks of additional scope. An examiner could legitimately ask "you have NR Xn HO modelled, why no throughput?" so the scope decision needs a written gerekçe rather than mental note.
 
-**Decision.** Lock the thesis monitoring scope to **mobility KPIs as defined in 3GPP TS 28.554 §6.3.1–6.3.2**:
+**Decision.** Lock the thesis monitoring scope to **mobility KPIs** (HOSR is standardized in 3GPP TS 28.554 §6.6 "Mobility KPI", clause 6.6.1 "NG-RAN handover success rate"; HOFR/RLF/ping-pong rates have no TS 28.554 KPI definition and follow the mobility-robustness conventions of TR 36.839 / TS 28.313):
+
+> *Correction (2026-06-12, thesis review F-19):* this ADR originally cited "TS 28.554 §6.3.1–6.3.2". In TS 28.554 clause 6.3 is **Integrity KPI** (latency/throughput); the mobility KPIs live in clause **6.6**, and RLF/ping-pong are not 28.554 KPIs at all. Clause references corrected here and in the thesis (chapter2_methodology.tex).
 
 1. **In scope** (computed from `events.parquet`): `HOSR` (HO success rate), `HOFR` (HO failure rate), `RLF` rate, `ping-pong` rate; plus the underlying radio measurements `RSRP_serving`, `RSRQ_serving`, `SINR_serving`, `RSRP_neighbor` (computed in `samples.parquet`) which the detectors aggregate into window features.
 2. **Out of scope** (TS 28.554 §6.3.6 service quality): downlink/uplink throughput, packet drop rate, end-to-end latency, jitter. The simulator does not produce these and the thesis does not claim them.
@@ -247,7 +251,7 @@ Both written via `parquet.write` from MATLAB Communications Toolbox / `parquetwr
 
 **Consequences.**
 - (+) Clean alignment between simulator capabilities and claimed KPIs — no over-claim risk.
-- (+) Defensible against "why not throughput?": *throughput requires an L2 MAC stack we explicitly do not model; mobility KPIs per TS 28.554 §6.3.1–2 are the canonical mobility-management metrics and are sufficient for the drift-aware-monitoring research question.*
+- (+) Defensible against "why not throughput?": *throughput requires an L2 MAC stack we explicitly do not model; mobility KPIs per TS 28.554 §6.6 (+ TR 36.839 conventions) are the canonical mobility-management metrics and are sufficient for the drift-aware-monitoring research question.*
 - (+) Throughput is monotone-correlated with `SINR_serving` (Shannon bound), so no detector information is lost — any throughput-driven anomaly is already visible in SINR.
 - (−) The earlier paper (`paper.tex`) mentions "lower downlink throughput" in the preliminary findings sentence. This sentence will be rewritten in the thesis Data Strategy chapter as "higher HO failure rate and poorer average signal conditions". Paper itself stays as-is (conference snapshot).
 - (−) Loses the ability to evaluate user-experience metrics directly. Mitigation: the thesis explicitly frames the contribution as *mobility-layer* monitoring; user-experience evaluation is named as future work.

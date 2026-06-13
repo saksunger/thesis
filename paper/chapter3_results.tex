@@ -63,8 +63,8 @@ and short, so only a fraction of the fleet sees it in any window. Even so, these
 values must be read against the imbalance of the task
 (Section~\ref{sec:anomaly-method}): with a positive prevalence of only about
 $2.4\%$ for interference spike, the random-classifier PR-AUC baseline is
-$\approx 0.024$, so LOF's $0.152$ is roughly six times the chance level rather
-than a non-detection. Slow degradation is the only type that stays essentially at
+$\approx 0.024$, so LOF's $0.152$ is roughly six times the chance level, not a
+non-detection. Slow degradation is the only type that stays essentially at
 that floor (PR-AUC $\approx 0.04$ against a $\approx 0.037$ baseline) because a
 slow ramp on a single UE barely moves a fleet-aggregated window. This separation between
 ``easy'' and ``subtle'' anomalies is the main observation for RQ1, and is part of
@@ -75,13 +75,16 @@ mean PR-AUC the strongest detector is LOF, whereas by pooled PR-AUC it is
 Isolation Forest ($0.425$); the two views differ because the pooled metric is
 dominated by the large number of normal windows and by the easy anomalies. A
 reasonable reading is that detector choice should follow the anomaly profile of
-interest rather than a single headline number.
+interest, not a single headline number.
 
 \paragraph{Robustness checks.}
 The window-size sweep ($2$--$30$\,s) shifts the per-type numbers but not the
-ranking: short windows ($2$\,s) help the abrupt glitch and burst, while a longer
-window ($30$\,s) helps the slowly varying anomalies (for example RLF-burst PR-AUC
-rises to $0.845$ for PCA-AE at $30$\,s). The drop-one-family ablation shows that
+overall picture: the shortest window helps the sharp, localised anomalies
+(measurement-glitch PR-AUC rises to $0.919$ for One-Class SVM and interference
+spike to $0.195$ for LOF at $2$\,s), while the longest window helps the
+anomalies that need time to accumulate evidence (RLF-burst rises to $0.845$ for
+PCA-AE at $30$\,s, and slow degradation roughly doubles, though it stays near
+the noise floor). The drop-one-family ablation shows that
 the RSRQ feature family is the most important by a wide margin: removing it costs
 up to $0.33$ PR-AUC on measurement glitch, whereas removing the event-count or
 derived-rate families changes little. Figure~\ref{fig:anomaly-degradation} shows
@@ -99,8 +102,8 @@ changes.
 \label{sec:res-drift}
 
 Every one of the eight injected drifts is detected by every one of the seven
-detectors (instance-level miss rate $0$), so the question is not \emph{whether}
-drift is found but with what \emph{latency} and at what \emph{false-alarm} cost.
+detectors (instance-level miss rate $0$). What separates the detectors is the
+price: how late the alarm comes, and how often it fires on clean data.
 Table~\ref{tab:drift} gives the median detection latency per drift type together
 with the mean baseline false-alarm rate, and Figure~\ref{fig:drift-heatmap}
 visualises the same trade-off.
@@ -140,13 +143,13 @@ reconfiguration drifts ($2$--$3$\,s) where a sharp mean change is present. By th
 combined latency criterion (with misses penalised) the overall winner is
 Energy-batch, but in an operational setting the low-false-alarm detectors would
 be preferable; the right choice depends on whether the cost of a late alarm or a
-false alarm is higher. This trade-off, rather than a single best detector, is the
+false alarm is higher. This trade-off, not the crowning of a single best detector, is the
 main observation for RQ2.
 
 \section{Drift-aware adaptive monitoring (RQ3)}
 \label{sec:res-adaptive}
 
-The PCA-reconstruction autoencoder (PCA-AE) is used as the base monitor for the
+The PCA-reconstruction detector (PCA-AE) is used as the base monitor for the
 adaptive experiments rather than the pooled-best Isolation Forest. The reason is
 that the adaptive loop repeatedly refits the detector under drift, so the
 selection criterion here is not the highest static accuracy but suitability for
@@ -158,9 +161,10 @@ Isolation Forest re-grows its ensemble at every refit and shifts its operating
 threshold, which is less suited to the self-supervised filtering used below.
 
 Table~\ref{tab:adaptive} compares the four retraining strategies on the PCA-AE
-monitor, and Figure~\ref{fig:adaptive} plots PR-AUC over time. The main takeaway
-is that \emph{how} the monitor is retrained appears to matter more than
-\emph{whether} it is retrained.
+monitor, and Figure~\ref{fig:adaptive} plots PR-AUC over time. The four
+strategies share the same base detector and the same trigger, yet their outcomes
+diverge sharply: what appears to decide the result is what is allowed into the
+retraining pool.
 
 \begin{table}[ht]
 \centering
@@ -284,7 +288,7 @@ interventions fire, every recommendation lies inside the trained grid, both D-4
 events change the configuration, and the cumulative HOSR uplift is positive. This
 completes the RQ4 loop: drift can degrade the handover KPI, and a feasible
 reconfiguration, chosen from the surrogate, is predicted to recover it. The
-uplift is a model prediction rather than a measured field gain, which is stated
+uplift is a model prediction, not a measured field gain, which is stated
 as a limitation.
 
 \begin{figure}[ht]
@@ -296,8 +300,8 @@ as a limitation.
 \section{External validation}
 \label{sec:res-external}
 
-Three checks probe how far these results travel
-(Table~\ref{tab:external}). First, a cross-seed replication over five master
+How far do these results travel? Table~\ref{tab:external} summarises the three
+checks. First, a cross-seed replication over five master
 seeds: the drift-volume is stable (coefficient of variation $0.04$), the
 filtered-beats-naive gap replicates ($+0.072$, 95\% CI $[+0.033, +0.113]$), the
 end-to-end HOSR uplift is essentially identical across seeds

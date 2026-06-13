@@ -79,7 +79,7 @@ help:
 	@echo "                  x bootstrap CI on median latency. Default timeline: timeline_medium (~4.5 min)."
 	@echo ""
 	@echo "Phase 7 (adaptive framework - Iter A implemented):"
-	@echo "  adaptive-benchmark Iter A: 3 retraining strategies (static / periodic-180s / drift-triggered)"
+	@echo "  adaptive-benchmark Iter A: 4 retraining strategies (static / periodic-180s / drift-triggered-naive / drift-triggered-filtered)"
 	@echo "                  x PCA-AE base detector x ADWIN drift trigger on HOSR/RLF streams."
 	@echo "                  Outputs Table 7.1, sliding PR-AUC + cost ledger, 2-panel figure."
 	@echo "                  Default timeline: timeline_medium."

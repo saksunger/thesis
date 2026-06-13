@@ -2,19 +2,19 @@
 
 > This is the **ground-truth labelling source** for drift and anomaly detection benchmarks. Every scenario listed here is implemented under `simulator/+scenarios/` and writes a labelled timeline event to `events_ground_truth.parquet`.
 
-> **Scope (ADR-14):** every drift and every anomaly below is intra-5G-NR. There are no inter-RAT scenarios (no NR→LTE fallback, no NR→Wi-Fi). D-2 (UMa ↔ UMi) swaps channel models within TR 38.901, both of which are 5G NR channels. The 7-hex layout is treated as 7 distinct gNBs, so every HO event is by construction inter-gNB Xn (TS 38.300 §9.2.3.2).
+> **Scope (ADR-14):** every drift and every anomaly below is intra-5G-NR. There are no inter-RAT scenarios (no NR→LTE fallback, no NR→Wi-Fi). D-2 (UMa ↔ UMi) swaps channel models within TR 38.901, both of which are 5G NR channels. The 19-cell two-tier hex layout is treated as 19 distinct gNBs, so every HO event is by construction inter-gNB Xn (TS 38.300 §9.2.3.2).
 
 ## 1. Baseline scenario (no drift, no anomaly)
 
 | Attribute            | Value                                |
 |----------------------|--------------------------------------|
-| Layout               | 7-cell hex, ISD 500 m                |
+| Layout               | 19-cell two-tier hex (`n_tiers=2`), ISD 500 m |
 | Channel              | TR 38.901 UMa LoS/NLoS               |
 | Shadow std           | 4 dB LoS / 6 dB NLoS                 |
 | Decorrelation dist.  | 37 m                                 |
 | Carrier              | 3.5 GHz, 100 MHz BW                  |
-| UE count             | 50                                   |
-| UE mobility          | Gauss-Markov, mean speed 5 m/s       |
+| UE count             | 12                                   |
+| UE mobility          | Random-Direction (straight line per phase, redraw at phase boundary), speed 10 m/s |
 | HO config            | TTT 256 ms, hysteresis 2 dB, A3 off 0 dB |
 | Duration             | configurable per timeline assembly   |
 

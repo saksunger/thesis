@@ -1,10 +1,10 @@
 \chapter*{Introduction}
 
-Mobility management, and especially the handover (HO) process, is one of the key control functions in cellular communication systems. In 5G and future radio access networks (RANs), the growing number of users, dense small-cell deployments, higher carrier frequencies, and higher user mobility make the radio environment increasingly dynamic~\cite{hoMgmtSurvey2025}. As networks grow denser and more heterogeneous, each user performs more handovers, and an incorrectly configured or poorly monitored handover can lead to HO failures, ping-pong effects, or radio link failures (RLF) that directly degrade the quality of service experienced by the user equipment (UE)~\cite{tr36839}. Reliable handover monitoring is therefore becoming a central concern in modern mobile networks.
+Every time a moving user crosses a cell border, the network must hand the radio connection over to the next cell without dropping it. This handover (HO) process is one of the key control functions in cellular communication systems, and it is under growing pressure: 5G and future radio access networks (RANs) pack more users into denser small cells at higher carrier frequencies, so the radio environment changes faster and each user performs more handovers~\cite{hoMgmtSurvey2025}. An incorrectly configured or poorly monitored handover can lead to HO failures, ping-pong effects, or radio link failures (RLF) that directly degrade the quality of service experienced by the user equipment (UE)~\cite{tr36839}. Reliable handover monitoring is therefore becoming a central concern in modern mobile networks.
 
 However, HO-related KPI degradations are not all of the same kind. Some appear as short-term local anomalies, often caused by transient or hard-to-observe events in the network~\cite{chandola2009anomaly}. Others stem from longer-term changes in network behavior, where the statistical properties of the data evolve over time---a phenomenon commonly termed \emph{concept drift}~\cite{gama2014survey,lu2018drift}, which can make monitoring or prediction models gradually lose accuracy as conditions change. Anomaly detection targets unusual short-term behavior, whereas concept drift detection recognizes changes in what should count as normal. The two are closely linked and need to be analyzed together: otherwise transient disruptions are easily confused with long-term model degradation, leading to incorrect monitoring decisions and unreliable optimisation actions.
 
-This thesis focuses specifically on the intra-RAT inter-gNB HO scenario, which is one of the most common and operationally important mobility cases in dense 5G deployments~\cite{hoMgmtSurvey2025}. Compared to inter-RAT transitions, intra-RAT handovers also offer a more homogeneous technical environment for the analysis pursued here~\cite{ts38300,ts37340}. The scenario is thus both practically important and tractable as a research target.
+This thesis focuses specifically on the intra-RAT inter-gNB HO scenario. In a dense 5G deployment neighbouring cells typically belong to different gNBs, which makes this the everyday, operationally important mobility case. Compared to inter-RAT transitions, intra-RAT handovers also offer a more homogeneous technical environment for the analysis pursued here~\cite{ts38300,ts37340}. The scenario is thus both practically important and tractable as a research target.
 
 AI-based HO prediction and optimization have already been studied extensively~\cite{seq2seqMob2022,slicedDRL2024}, anomaly detection on cellular and O-RAN performance metrics is itself an active research area~\cite{oranAnomaly2025,oranBenchmark2023}, and concept drift detection and KPI forecasting are receiving growing attention in mobile-network monitoring~\cite{leaf,forecast5g2024}. These directions, however, are usually pursued separately: a unified HO monitoring framework that jointly handles anomaly detection, concept drift detection, and configuration--performance analysis for intra-RAT inter-gNB scenarios remains largely missing. This gap is the main motivation for the thesis, which investigates how HO behavior in 5G/6G RANs can be monitored more reliably by separating short-term anomalies from long-term behavioral changes and analyzing how these changes interact with the HO configuration parameters.
 
@@ -21,6 +21,23 @@ The research is mainly empirical and analytical. A dedicated HO monitoring datas
 \item analyzes the relationship between selected HO control parameters and HO performance under changing network conditions.
 
 \end{enumerate}
+
+These objectives are made concrete in four research questions, which also
+structure the presentation of the results in Chapter~\ref{ch:results}:
+\begin{description}
+  \item[RQ1 (anomaly detection):] How well do unsupervised detectors identify
+  short-term anomalies in handover KPI windows, and which fault types escape
+  them?
+  \item[RQ2 (drift detection):] How quickly and how reliably can concept drift
+  in handover KPI streams be detected, and at what false-alarm cost?
+  \item[RQ3 (drift-aware adaptation):] Does retraining the anomaly monitor when
+  drift is detected preserve monitoring quality over time, and how must the
+  retraining be performed for this to hold?
+  \item[RQ4 (configuration--performance):] Can a surrogate model link the
+  handover control parameters to mobility outcomes accurately enough, with
+  calibrated uncertainty, to support a reconfiguration recommendation after
+  drift?
+\end{description}
 
 No publicly available dataset provides complete 5G Standalone HO information together with the HO control parameters and the measured outcomes, so the main experimental data is generated through simulation. Public drive-test datasets play a supporting role: improving the realism of the radio environment and providing an additional reference for validating the generated data.
 
