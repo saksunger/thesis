@@ -1,7 +1,7 @@
 % !TEX encoding = UTF-8 Unicode
 % !TEX root = thesis.tex
 
-\chapter{Background and Related Work}
+\chapter{Background}
 \label{ch:background}
 
 This chapter sets out the terminology, the technical background and the prior
@@ -549,8 +549,8 @@ and the resulting outcomes, this relationship is realised through the
 is calibrated against real measurements; the present section only establishes
 \emph{why} the relationship is worth modelling.
 
-\section{Related work and research gap}
-\label{sec:gap}
+\chapter{Related Work and Research Gap}
+\label{ch:relatedwork}
 
 Machine learning is increasingly applied to mobility management and handover
 optimization in 5G and beyond networks~\cite{hoMgmtSurvey2025}. Two strands of
@@ -560,7 +560,7 @@ which tries to act on handovers before they go wrong, and (ii) handover
 watches handover behaviour for trouble. Each is valuable on its own, but their integration into a
 single handover-specific monitoring framework remains limited.
 
-\subsection{AI-based handover prediction and control}
+\section{AI-based handover prediction and control}
 \label{subsec:rw-prediction}
 
 The first stream focuses on proactive and adaptive handover decision-making.
@@ -586,7 +586,7 @@ mobility. However, they are optimised primarily for prediction or control
 performance and generally do not address whether the learned models remain valid
 over time as the network environment changes.
 
-\subsection{Handover anomaly detection and cellular KPI drift}
+\section{Handover anomaly detection and cellular KPI drift}
 \label{subsec:rw-anomaly-drift}
 
 The second stream is closer to the monitoring focus of this thesis. On the
@@ -625,7 +625,7 @@ demonstrates mobility-aware intra-/inter-gNB handover prediction~\cite{forecast5
 however, it does not establish a formal anomaly-detection and concept-drift
 framework for handover monitoring.
 
-\subsection{Literature matrix and research gap}
+\section{Literature matrix and research gap}
 \label{subsec:rw-matrix}
 
 Table~\ref{tab:litmatrix} summarises the representative studies discussed above,
