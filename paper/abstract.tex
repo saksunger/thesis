@@ -1,23 +1,27 @@
 \abstract{
 % English abstract.
 
-Handover (HO) management is one of the most important mobility functions in 5G
-and emerging 6G radio access networks. When handovers are configured or monitored
+Handover (HO) management is one of the most important mobility functions in
+fifth-generation (5G) and emerging sixth-generation (6G) radio access networks. When handovers are configured or monitored
 poorly they cause radio link failures (RLF), ping-pong effects, and a worse
 experience for the user, and as networks become denser every user goes through
 many more of them, which makes reliable HO monitoring increasingly important.
 This thesis studies one question in particular: does HO monitoring become more
 reliable when short-term anomalies and long-term concept drift are handled
-together instead of separately? The work is scoped to the intra-RAT inter-gNB
-Standalone (SA) case, which is among the most common mobility situations in dense
-deployments.
+together instead of separately? The work is scoped to intra-RAT, inter-gNB
+handover in 5G Standalone (SA) networks, meaning handover between cells that use
+the same radio access technology (RAT) but are served by different base stations
+(next-generation NodeBs, gNBs). This is among the most common mobility
+situations in dense deployments.
 
 A practical obstacle shapes the methodology. No public dataset exposes the HO
 control parameters (time-to-trigger, hysteresis, A3 offset) together with the
-mobility KPIs they produce, so the main data comes from a custom 5G NR SA
-handover simulator built to follow the relevant 3GPP procedures. Its radio layer
-is calibrated against the real NordicDat drive-test data, with close agreement
-for RSRP and SINR and a documented residual mismatch for RSRQ. Real and simulated
+mobility key performance indicators (KPIs) they produce, so the main data comes
+from a custom 5G New Radio (NR) SA handover simulator built to follow the
+relevant 3rd Generation Partnership Project (3GPP) procedures. Its radio layer is calibrated against the real NordicDat drive-test
+data, with close agreement for reference signal received power (RSRP) and
+signal-to-interference-plus-noise ratio (SINR) and a documented residual
+mismatch for reference signal received quality (RSRQ). Real and simulated
 samples are never mixed, so the benchmark stays clean.
 
 On this data the thesis builds and compares four layers: unsupervised anomaly
@@ -26,15 +30,17 @@ drift-aware monitor that retrains the anomaly detector when drift is detected,
 and a configuration-performance surrogate that links HO parameters to mobility
 outcomes.
 
-Four findings stand out. Unsupervised detectors catch structured faults well
-(PR-AUC up to $0.858$) but miss most subtle ones. Every injected drift is
+Four findings stand out. Unsupervised detectors catch structured faults well,
+with the area under the precision--recall curve (PR-AUC) reaching $0.858$, but
+miss most subtle ones. Every injected drift is
 eventually detected, so the real design choice is a trade-off between detection
 latency and false alarms rather than whether drift is seen at all. Retraining the
 monitor naively on recent data backfires: it absorbs post-drift anomalies into
 ``normal'' and roughly halves detection quality, a self-poisoning effect. A
 simple self-supervised filter that drops the most suspicious windows before
 retraining repairs this and more than triples drift-phase PR-AUC. Finally, a
-gradient-boosting surrogate predicts HOSR accurately ($R^2 = 0.96$) and, wrapped
+gradient-boosting surrogate predicts the handover success rate (HOSR) accurately
+($R^2 = 0.96$) and, wrapped
 in conformal prediction intervals, drives an end-to-end detect, recommend, and
 recover loop with a model-predicted HOSR gain of $+0.62$. The overall message is
 that how a monitor is kept up to date matters more than whether it is updated at
@@ -44,23 +50,32 @@ all.
 % Streszczenie w języku polskim.
 
 Zarządzanie przełączeniem (handover, HO) jest jedną z najważniejszych funkcji
-mobilności w sieciach radiowych 5G oraz powstających sieciach 6G. Źle
+mobilności w sieciach radiowych piątej generacji (5G) oraz powstających
+sieciach szóstej generacji (6G). Źle
 skonfigurowane lub źle monitorowane przełączenia powodują utratę połączenia
-radiowego (RLF), efekt ping-pong i pogorszenie jakości użytkowania, a wraz z
+radiowego (radio link failure, RLF), efekt ping-pong i pogorszenie jakości użytkowania, a wraz z
 zagęszczaniem sieci każdy użytkownik wykonuje ich znacznie więcej, co czyni
 niezawodne monitorowanie HO coraz ważniejszym. Praca bada jedno pytanie: czy
 monitorowanie HO staje się bardziej niezawodne, gdy krótkoterminowe anomalie i
 długoterminowy dryf pojęć są traktowane łącznie, a nie osobno. Zakres ograniczono
-do przypadku intra-RAT inter-gNB w trybie Standalone (SA), jednego z
-najczęstszych scenariuszy mobilności w gęstych sieciach.
+do przełączeń intra-RAT, inter-gNB w sieciach 5G w trybie Standalone (SA), czyli
+przełączeń między komórkami korzystającymi z tej samej technologii dostępu
+radiowego (radio access technology, RAT), lecz obsługiwanymi przez różne stacje
+bazowe (next-generation NodeB, gNB). Jest to jeden z najczęstszych scenariuszy
+mobilności w gęstych sieciach.
 
 Metodologię kształtuje praktyczne ograniczenie. Żaden publiczny zbiór danych nie
 udostępnia jednocześnie parametrów sterujących HO (time-to-trigger, histereza,
-offset A3) oraz wynikających z nich wskaźników KPI mobilności, dlatego główne
-dane pochodzą z własnego symulatora przełączeń 5G NR SA, zbudowanego zgodnie z
-odpowiednimi procedurami 3GPP. Jego warstwę radiową skalibrowano względem
-rzeczywistych danych z testów drogowych NordicDat, z dobrą zgodnością dla RSRP i
-SINR oraz udokumentowaną resztkową rozbieżnością dla RSRQ. Danych rzeczywistych
+offset A3) oraz wynikających z nich kluczowych wskaźników wydajności (key
+performance indicators, KPI) mobilności, dlatego główne dane pochodzą z własnego
+symulatora przełączeń 5G New Radio (NR) SA, zbudowanego zgodnie z odpowiednimi
+procedurami organizacji 3rd Generation Partnership Project (3GPP). Jego warstwę radiową skalibrowano względem
+rzeczywistych danych z testów drogowych NordicDat, z dobrą zgodnością dla mocy
+odbieranego sygnału referencyjnego (reference signal received power, RSRP) i
+stosunku sygnału do interferencji i szumu (signal-to-interference-plus-noise
+ratio, SINR) oraz udokumentowaną resztkową rozbieżnością dla jakości odbieranego
+sygnału referencyjnego (reference signal received quality, RSRQ). Danych
+rzeczywistych
 nigdy nie łączono z symulowanymi, dzięki czemu benchmark pozostaje czysty.
 
 Na tych danych zbudowano i porównano cztery warstwy: nienadzorowaną detekcję
@@ -70,7 +85,8 @@ dryfu, oraz zastępczy model konfiguracja--wydajność łączący parametry HO z
 wynikami mobilności.
 
 Wyróżniają się cztery wyniki. Detektory nienadzorowane dobrze wykrywają usterki
-strukturalne (PR-AUC do $0,858$), lecz w większości pomijają subtelne. Każdy
+strukturalne, z polem pod krzywą precyzja--czułość (PR-AUC) sięgającym $0,858$,
+lecz w większości pomijają subtelne. Każdy
 wstrzyknięty dryf zostaje ostatecznie wykryty, więc rzeczywistym wyborem
 projektowym jest kompromis między opóźnieniem detekcji a fałszywymi alarmami, a
 nie to, czy dryf w ogóle zostanie zauważony. Naiwne ponowne uczenie monitora na
@@ -79,7 +95,8 @@ bieżących danych przynosi efekt odwrotny: wchłania anomalie po dryfie do
 samozatrucia. Prosty samonadzorowany filtr, który usuwa najbardziej podejrzane
 okna przed ponownym uczeniem, naprawia to i ponad trzykrotnie zwiększa PR-AUC w
 fazie dryfu. Wreszcie zastępczy model oparty na gradient boosting trafnie
-przewiduje HOSR ($R^2 = 0,96$) i, opakowany w konformalne przedziały predykcji,
+przewiduje współczynnik skuteczności przełączeń (HOSR) z $R^2 = 0,96$ i,
+opakowany w konformalne przedziały predykcji,
 napędza kompletną pętlę: wykryj, rekomenduj, przywróć, z przewidzianym przez
 model wzrostem HOSR o $+0,62$. Ogólny wniosek jest taki, że sposób aktualizowania
 monitora ma większe znaczenie niż to, czy jest on w ogóle aktualizowany.
